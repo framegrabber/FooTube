@@ -5,8 +5,7 @@ import SwiftUI
 struct FooTubeApp: App {
     var body: some Scene {
         WindowGroup {
-            Text(AppInfo.name)
-                .font(.largeTitle)
+            PlayByIDView(resolver: YouTubeKitResolver())
         }
     }
 }

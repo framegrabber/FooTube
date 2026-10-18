@@ -15,6 +15,7 @@ Read CONSTRAINTS.md before writing code. Do not weaken it to make a change pass.
 | Generate Xcode project | `xcodegen generate` (never hand-edit `FooTube.xcodeproj`; it is gitignored) |
 | Core build / tests | `swift build --package-path Packages/FooTubeCore` / `swift test --package-path Packages/FooTubeCore` |
 | Network tests (real YouTube) | `FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore` |
+| Run and auto-play a video | `scripts/run-sim.sh -play <id or URL>` (launch argument read by `PlayByIDView`; also works with `devicectl … process launch`) |
 | Build + run in Simulator | `scripts/run-sim.sh` |
 | Screenshot | `xcrun simctl io "Apple TV" screenshot <path>.png` |
 | Logs | `xcrun simctl spawn "Apple TV" log stream --predicate 'subsystem == "com.felixrothballer.FooTube"'` |
