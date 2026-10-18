@@ -36,7 +36,7 @@ Core build:         swift build --package-path Packages/FooTubeCore
 Core tests:         swift test --package-path Packages/FooTubeCore
 Network tests:      FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore
 Simulator build:    xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS Simulator,name=Apple TV' build | xcbeautify
-Simulator run:      xcrun simctl boot "Apple TV"; xcrun simctl install booted <app>; xcrun simctl launch booted com.felixrothballer.FooTube
+Simulator run:      scripts/run-sim.sh   (build, install, launch on "Apple TV")
 Screenshot:         xcrun simctl io booted screenshot <path>.png
 Logs:               xcrun simctl spawn booted log stream --predicate 'subsystem == "com.felixrothballer.FooTube"'
 Device build:       xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS,id=<udid>' build | xcbeautify

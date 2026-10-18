@@ -1,0 +1,32 @@
+name: FooTube
+options:
+  bundleIdPrefix: com.felixrothballer
+  deploymentTarget:
+    tvOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: X94768F5PD
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+packages:
+  FooTubeCore:
+    path: Packages/FooTubeCore
+targets:
+  FooTube:
+    type: application
+    platform: tvOS
+    sources:
+      - App
+    dependencies:
+      - package: FooTubeCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.felixrothballer.FooTube
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: FooTube
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    scheme: {}

@@ -42,7 +42,11 @@ run "secrets" gitleaks dir --redact --no-banner --log-level warn .
 if [[ "$mode" == "task" ]]; then
   if [[ -f Packages/FooTubeCore/Package.swift ]]; then
     run "core build" swift build --package-path Packages/FooTubeCore
-    run "core tests" swift test --package-path Packages/FooTubeCore
+    if [[ -d Packages/FooTubeCore/Tests ]]; then
+      run "core tests" swift test --package-path Packages/FooTubeCore
+    else
+      skip "core tests" "no test target yet"
+    fi
   else
     skip "core build/tests" "Packages/FooTubeCore not created yet"
   fi
