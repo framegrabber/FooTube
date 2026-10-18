@@ -1,0 +1,12 @@
+[
+  {"videoID": "otherVideo1", "segments": [
+    {"category": "sponsor", "actionType": "skip", "segment": [0, 13.1], "UUID": "aaa", "videoDuration": 3249.0, "locked": 0, "votes": 0, "description": ""}
+  ]},
+  {"videoID": "zergV5YUDjk", "segments": [
+    {"category": "intro", "actionType": "skip", "segment": [0, 5.5], "UUID": "intro-1", "videoDuration": 900.0, "locked": 0, "votes": 3, "description": ""},
+    {"category": "sponsor", "actionType": "skip", "segment": [51.179, 102.219], "UUID": "sponsor-1", "videoDuration": 900.0, "locked": 1, "votes": 10, "description": ""},
+    {"category": "sponsor", "actionType": "mute", "segment": [200, 210], "UUID": "mute-1", "videoDuration": 900.0, "locked": 0, "votes": 1, "description": ""},
+    {"category": "poi_highlight", "actionType": "poi", "segment": [300, 300], "UUID": "poi-1", "videoDuration": 900.0, "locked": 0, "votes": 1, "description": ""},
+    {"category": "selfpromo", "actionType": "skip", "segment": [850, 880.25], "UUID": "selfpromo-1", "videoDuration": 900.0, "locked": 0, "votes": 2, "description": ""}
+  ]}
+]
