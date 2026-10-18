@@ -5,7 +5,7 @@ import SwiftUI
 struct FooTubeApp: App {
     var body: some Scene {
         WindowGroup {
-            HomeView(resolver: YouTubeKitResolver())
+            HomeView(resolver: YouTubeKitResolver(), sponsorBlock: SponsorBlockClient())
         }
     }
 }

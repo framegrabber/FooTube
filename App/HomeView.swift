@@ -4,6 +4,7 @@ import SwiftUI
 /// Home: play by ID/URL, plus the MVP test videos.
 struct HomeView: View {
     let resolver: any StreamResolver
+    let sponsorBlock: SponsorBlockClient
 
     @State private var input = ""
     @State private var state: ResolveState = .idle
@@ -61,6 +62,18 @@ struct HomeView: View {
                         DiagnosticsOverlay(session: session)
                     #endif
                 }
+                .overlay(alignment: .bottomLeading) {
+                    if let notice = session.notice {
+                        Text(notice)
+                            .font(.callout)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(.black.opacity(0.7), in: .capsule)
+                            .padding(60)
+                            .transition(.opacity)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .onExitCommand { self.session = nil }
         }
         .task {
@@ -105,7 +118,11 @@ struct HomeView: View {
                 let stream = try await resolver.resolve(id)
                 guard !Task.isCancelled else { return }
                 state = .idle
-                session = PlayerSession(source: PlaybackSource(stream: stream), requestedAt: requestedAt)
+                session = PlayerSession(
+                    source: PlaybackSource(stream: stream),
+                    sponsorBlock: sponsorBlock,
+                    requestedAt: requestedAt,
+                )
             } catch {
                 guard !Task.isCancelled else { return }
                 state = .failed(error.message)

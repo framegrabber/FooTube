@@ -2,7 +2,8 @@ import AVKit
 import FooTubeCore
 import SwiftUI
 
-/// Full-screen system player. Siri Remote transport controls come from `AVPlayerViewController`.
+/// Full-screen system player. Siri Remote transport controls come from `AVPlayerViewController`;
+/// SponsorBlock skip buttons use its `contextualActions` (the "Skip Intro"-style button).
 struct PlayerView: UIViewControllerRepresentable {
     let session: PlayerSession
 
@@ -14,6 +15,7 @@ struct PlayerView: UIViewControllerRepresentable {
         let controller = AVPlayerViewController()
         controller.player = session.player
         context.coordinator.observe(controller)
+        context.coordinator.trackOffer(in: controller)
         session.start()
         return controller
     }
@@ -29,6 +31,7 @@ struct PlayerView: UIViewControllerRepresentable {
     final class Coordinator {
         let session: PlayerSession
         private var observation: NSKeyValueObservation?
+        private var shownOffer: SkipSegment?
 
         init(session: PlayerSession) {
             self.session = session
@@ -42,6 +45,24 @@ struct PlayerView: UIViewControllerRepresentable {
                     }
                 }
             }
+        }
+
+        /// Mirrors `session.offeredSegment` into the controller's contextual actions. Re-registers
+        /// observation after every change (Observation's `onChange` fires once).
+        func trackOffer(in controller: AVPlayerViewController) {
+            let offer = withObservationTracking {
+                session.offeredSegment
+            } onChange: { [weak self, weak controller] in
+                Task { @MainActor in
+                    guard let controller else { return }
+                    self?.trackOffer(in: controller)
+                }
+            }
+            guard offer != shownOffer else { return }
+            shownOffer = offer
+            controller.contextualActions = offer.map { segment in
+                [UIAction(title: "Skip \(segment.category.displayName)") { [session] _ in session.skipOffered() }]
+            } ?? []
         }
     }
 }
