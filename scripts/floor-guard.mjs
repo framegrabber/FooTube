@@ -77,14 +77,14 @@ const isIgnoreFile = (f) => f === '.constraintsignore';
 const SUPPRESSIONS = /swiftlint:disable|swiftformat:disable|gitleaks:allow|nosemgrep|@unchecked\s+Sendable|nonisolated\(unsafe\)|@preconcurrency|-suppress-warnings|SWIFT_TREAT_WARNINGS_AS_ERRORS:\s*NO/;
 // 4. Unfinished work.
 const STUBS = /\bTODO\b|\bFIXME\b|(fatalError|preconditionFailure)\(\s*"[^"]*([Nn]ot implemented|[Uu]nimplemented)|catch\s*(let\s+\w+\s*)?\{\s*\}/;
-// 2. A test made easier.
+// 2. A test made easier. Only in test files: SwiftUI's `.disabled(_:)` modifier is not a test trait.
 const SKIPS = /\.disabled\b|withKnownIssue|XCTSkip/;
 
 for (const { file, text } of added) {
   if (isScanned(file)) {
     if (SUPPRESSIONS.test(text)) flag('silenced-checker', file, text);
     if (STUBS.test(text)) flag('unfinished-work', file, text);
-    if (SKIPS.test(text)) flag('test-made-easier', file, text);
+    if (isTest(file) && SKIPS.test(text)) flag('test-made-easier', file, text);
   }
   if (isConstraints(file) && /^\| *(W|E)\d+ *\|/.test(text)) flag('new-exception', file, text);
   if (isIgnoreFile(file) && text.trim() && !text.trim().startsWith('#')) flag('new-ignore', file, text);

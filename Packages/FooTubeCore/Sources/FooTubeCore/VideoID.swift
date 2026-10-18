@@ -56,3 +56,18 @@ public struct VideoID: Hashable, Sendable, CustomStringConvertible {
         }
     }
 }
+
+extension VideoID: Codable {
+    public init(from decoder: any Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        guard let id = VideoID(raw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Invalid video ID \(raw)"))
+        }
+        self = id
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+}

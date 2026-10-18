@@ -1,11 +1,12 @@
 import FooTubeCore
 import SwiftUI
 
-/// Subscribed channels (stored on this device); selecting one opens its channel page.
+/// Latest uploads from subscribed channels, then the channels themselves (stored on this device).
 struct SubscriptionsView: View {
     let catalog: any Catalog
 
     @Environment(SubscriptionsModel.self) private var subscriptions
+    @Environment(FeedModel.self) private var feed
     @State private var path: [ChannelRef] = []
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 40), count: 6)
@@ -21,6 +22,25 @@ struct SubscriptionsView: View {
                         Text("No subscriptions yet. Open a channel from search (long-press a video) and choose Subscribe.")
                             .foregroundStyle(.secondary)
                     } else {
+                        HStack(spacing: 32) {
+                            Text("Latest").font(.headline)
+                            if feed.isRefreshing {
+                                ProgressView()
+                            } else if let fetchedAt = feed.snapshot?.fetchedAt {
+                                Text("Updated \(fetchedAt, format: .relative(presentation: .named))")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Refresh") {
+                                Task { await feed.refresh(subscriptions.subscriptions) }
+                            }
+                            .disabled(feed.isRefreshing)
+                        }
+                        if let error = feed.lastError {
+                            Text(error).foregroundStyle(.red)
+                        }
+                        VideoGrid(videos: feed.snapshot?.items ?? [], onOpenChannel: { path.append($0) })
+
                         Text("Channels").font(.headline)
                         LazyVGrid(columns: columns, spacing: 40) {
                             ForEach(subscriptions.subscriptions) { subscription in
@@ -35,6 +55,9 @@ struct SubscriptionsView: View {
                     }
                 }
                 .padding(80)
+            }
+            .task(id: subscriptions.subscriptions.map(\.id)) {
+                await feed.refresh(subscriptions.subscriptions)
             }
             .navigationDestination(for: ChannelRef.self) { channel in
                 ChannelView(catalog: catalog, channel: channel, onOpenChannel: { path.append($0) })

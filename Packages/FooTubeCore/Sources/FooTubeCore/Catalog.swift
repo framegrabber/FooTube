@@ -2,7 +2,7 @@ import Foundation
 import InnerTubeKit
 import os
 
-public struct ChannelRef: Hashable, Sendable {
+public struct ChannelRef: Codable, Hashable, Sendable {
     public let id: String
     public let name: String?
 
@@ -13,7 +13,7 @@ public struct ChannelRef: Hashable, Sendable {
 }
 
 /// A video as shown in lists (search results, channel uploads, feed).
-public struct VideoSummary: Identifiable, Hashable, Sendable {
+public struct VideoSummary: Identifiable, Codable, Hashable, Sendable {
     public let id: VideoID
     public let title: String
     public let channel: ChannelRef?
@@ -78,9 +78,17 @@ public struct InnerTubeCatalog: Catalog {
 
     public init() {}
 
+    /// YouTubeModel is a non-Sendable class; a fresh one per request keeps this type Sendable.
+    /// English responses keep relative ages ("3 days ago") parseable for the feed.
+    private static func model() -> YouTubeModel {
+        let model = YouTubeModel()
+        model.selectedLocale = "en-US"
+        return model
+    }
+
     public func channel(_ id: String) async throws(CatalogError) -> ChannelPage {
         do {
-            let model = YouTubeModel()
+            let model = Self.model()
             let header = try await ChannelInfosResponse.sendThrowingRequest(youtubeModel: model, data: [.browseId: id])
             let withVideos = try await header.getChannelContentThrowing(forType: .videos, youtubeModel: model)
             let ref = ChannelRef(id: id, name: header.name ?? withVideos.name)
@@ -101,7 +109,7 @@ public struct InnerTubeCatalog: Catalog {
     public func moreChannelVideos(_ cursor: PageCursor) async throws(CatalogError) -> ResultsPage {
         do {
             let response = try await ChannelInfosResponse.ContentContinuation<ChannelInfosResponse.Videos>
-                .sendThrowingRequest(youtubeModel: YouTubeModel(), data: [.continuation: cursor.token])
+                .sendThrowingRequest(youtubeModel: Self.model(), data: [.continuation: cursor.token])
             return page(response.contents?.items ?? [], token: response.newContinuationToken, visitorData: nil, channel: cursor.channel)
         } catch {
             logger.error("channel continuation failed: \(error.localizedDescription, privacy: .public)")
@@ -111,8 +119,7 @@ public struct InnerTubeCatalog: Catalog {
 
     public func search(_ query: String) async throws(CatalogError) -> ResultsPage {
         do {
-            // YouTubeModel is a non-Sendable class; a fresh one per request keeps this type Sendable.
-            let response = try await SearchResponse.sendThrowingRequest(youtubeModel: YouTubeModel(), data: [.query: query])
+            let response = try await SearchResponse.sendThrowingRequest(youtubeModel: Self.model(), data: [.query: query])
             return page(response.results, token: response.continuationToken, visitorData: response.visitorData)
         } catch {
             logger.error("search failed: \(error.localizedDescription, privacy: .public)")
@@ -124,7 +131,7 @@ public struct InnerTubeCatalog: Catalog {
         var data: [HeadersList.AddQueryInfo.ContentTypes: String] = [.continuation: cursor.token]
         data[.visitorData] = cursor.visitorData
         do {
-            let response = try await SearchResponse.Continuation.sendThrowingRequest(youtubeModel: YouTubeModel(), data: data)
+            let response = try await SearchResponse.Continuation.sendThrowingRequest(youtubeModel: Self.model(), data: data)
             return page(response.results, token: response.continuationToken, visitorData: cursor.visitorData)
         } catch {
             logger.error("search continuation failed: \(error.localizedDescription, privacy: .public)")

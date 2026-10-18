@@ -6,6 +6,7 @@ struct RootView: View {
     let catalog: any Catalog
     @State var playback: PlaybackController
     @State var subscriptions: SubscriptionsModel
+    @State var feed: FeedModel
     @State private var didAutoplay = false
 
     var body: some View {
@@ -22,6 +23,7 @@ struct RootView: View {
         }
         .environment(playback)
         .environment(subscriptions)
+        .environment(feed)
         .overlay(alignment: .bottom) {
             StatusBanner(status: playback.status)
         }

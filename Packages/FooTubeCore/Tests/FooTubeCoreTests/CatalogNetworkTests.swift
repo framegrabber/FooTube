@@ -1,4 +1,4 @@
-import FooTubeCore
+@testable import FooTubeCore
 import Foundation
 import Testing
 
@@ -35,5 +35,15 @@ struct CatalogNetworkTests {
         print("RESULT channel page 2: \(more.items.count) videos")
         #expect(!more.items.isEmpty)
         #expect(more.items.allSatisfy { $0.channel?.id == blender })
+    }
+
+    @Test func `feed merges two channels newest first with English relative ages`() async throws {
+        let channels = [ChannelRef(id: "UCSMOQeBJ2RAnuFungnQOxLg", name: "Blender"), ChannelRef(id: "UCuAXFkgsw1L7xaCfnd5JJOw", name: "Rick Astley")]
+        let snapshot = try #require(await FeedService(catalog: InnerTubeCatalog()).refresh(channels))
+        print("RESULT feed: \(snapshot.items.count) items, first: \(snapshot.items.prefix(3).map { "\($0.channel?.name ?? "?"): \($0.published ?? "?")" })")
+        #expect(Set(snapshot.items.compactMap(\.channel?.id)) == Set(channels.map(\.id)))
+        let parsed = snapshot.items.prefix(10).compactMap { $0.published.flatMap(FeedMerger.age(of:)) }
+        #expect(parsed.count >= 8, "ages not parseable: \(snapshot.items.prefix(10).map(\.published))")
+        #expect(parsed == parsed.sorted())
     }
 }
