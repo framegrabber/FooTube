@@ -11,34 +11,54 @@ public enum HLSMasterPlaylist {
         public let maxHeight: Int
     }
 
+    /// AVPlayer starts with the first listed variant (HLS authoring spec); YouTube lists 240p first.
+    static let startHeight = 720
+
     /// Keeps every non-variant line (header, `#EXT-X-MEDIA` renditions) and each
-    /// `#EXT-X-STREAM-INF` + URI pair whose video codec is H.264 within the profile.
+    /// `#EXT-X-STREAM-INF` + URI pair whose video codec is H.264 within the profile. The best
+    /// variant at or below `startHeight` is listed first so playback starts sharp; ABR adapts from there.
     /// Returns nil when no variant qualifies.
     public static func filtered(_ text: String, for profile: DecodeProfile) -> Filtered? {
-        var output: [Substring] = []
-        var variantCount = 0
-        var maxHeight = 0
+        var otherLines: [Substring] = []
+        var variants: [(info: Substring, uri: Substring, height: Int, bandwidth: Int)] = []
+        var pending: (info: Substring, height: Int)?
         var dropNextURI = false
 
         for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
             if line.hasPrefix("#EXT-X-STREAM-INF:") {
                 if let height = decodableHeight(attributes: line, profile: profile) {
-                    output.append(line)
-                    variantCount += 1
-                    maxHeight = max(maxHeight, height)
+                    pending = (line, height)
                     dropNextURI = false
                 } else {
+                    pending = nil
                     dropNextURI = true
                 }
-            } else if dropNextURI, !line.hasPrefix("#"), !line.isEmpty {
+            } else if !line.hasPrefix("#"), !line.isEmpty, pending != nil || dropNextURI {
+                if let (info, height) = pending {
+                    let bandwidth = attribute("BANDWIDTH", in: info).flatMap { Int($0) } ?? 0
+                    variants.append((info, line, height, bandwidth))
+                }
+                pending = nil
                 dropNextURI = false
             } else {
-                output.append(line)
+                otherLines.append(line)
             }
         }
 
-        guard variantCount > 0 else { return nil }
-        return Filtered(text: output.joined(separator: "\n"), variantCount: variantCount, maxHeight: maxHeight)
+        guard !variants.isEmpty else { return nil }
+        if let start = variants.indices
+            .filter({ variants[$0].height <= startHeight })
+            .max(by: { (variants[$0].height, variants[$0].bandwidth) < (variants[$1].height, variants[$1].bandwidth) })
+        {
+            variants.insert(variants.remove(at: start), at: 0)
+        }
+
+        let lines = otherLines.filter { !$0.isEmpty } + variants.flatMap { [$0.info, $0.uri] }
+        return Filtered(
+            text: lines.joined(separator: "\n") + "\n",
+            variantCount: variants.count,
+            maxHeight: variants.map(\.height).max() ?? 0,
+        )
     }
 
     private static func decodableHeight(attributes line: Substring, profile: DecodeProfile) -> Int? {

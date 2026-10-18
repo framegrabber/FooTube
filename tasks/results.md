@@ -20,3 +20,16 @@ Command: `FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore
 - YouTubeKit's progressive (muxed) streams come from the `WEB` client and return **HTTP 403** (PO token required for GVS). Its adaptive H.264 streams come from `VISIONOS` and return 206. So the muxed fallback is mostly dead; the resolver checks for 403 before returning one.
 - YouTubeKit does not expose which client produced a stream or the itag number publicly; the itag is read from the URL query.
 - Made-for-kids: YouTubeKit gets nothing while yt-dlp's `visionos` client does → likely a YouTubeKit request difference. Not blocking; revisit if kids content matters.
+
+## 2026-10-19 — T3/T4 in the `Apple TV` Simulator (tvOS 26.2, Mac decoders)
+
+Launched with `scripts/run-sim.sh -play <id>`; values from the debug diagnostics overlay and `playback` log.
+
+| Video | Result | First frame (incl. resolve) | Variant after ~5 s |
+|---|---|---|---|
+| Big Buck Bunny `aqz-KE-bpKQ` | plays, no ads | 1.98 s (resolve 1.43 s) | 1080p, 7.4 Mbps, 0 dropped |
+| Rick Astley `dQw4w9WgXcQ` (also as `youtu.be/…?si=` URL) | plays, no ads, captions button offered | 2.25 s | 1080p, 4.7 Mbps, 0 dropped |
+| Made for kids `XqZsoesa55w` | clear error on screen (no stream) | — | — |
+
+- The filtered master now lists the best ≤ 720p variant first (AVPlayer starts with the first variant); before, playback began at 240p.
+- Not yet verified: Siri Remote seek/pause and Menu-to-exit (no remote input available in the Simulator from the command line), and anything on the Apple TV HD.

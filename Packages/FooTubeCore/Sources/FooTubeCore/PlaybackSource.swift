@@ -22,7 +22,8 @@ public final class PlaybackSource: Identifiable, Sendable {
         self.stream = stream
         switch stream.kind {
         case let .hls(playlist, _, _):
-            let url = URL(string: "\(Self.scheme)://\(stream.videoID.rawValue)/master.m3u8")!
+            // ID in the path, not the host: IDs may contain "_", which is not a valid hostname character.
+            let url = URL(string: "\(Self.scheme)://playlist/\(stream.videoID.rawValue).m3u8")!
             let loader = PlaylistLoader(url: url, playlist: Data(playlist.utf8))
             let asset = AVURLAsset(url: url)
             asset.resourceLoader.setDelegate(loader, queue: PlaylistLoader.queue)

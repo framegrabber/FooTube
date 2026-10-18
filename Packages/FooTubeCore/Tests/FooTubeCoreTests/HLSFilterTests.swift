@@ -69,4 +69,10 @@ struct HLSFilterTests {
         """
         #expect(try #require(HLSMasterPlaylist.filtered(text, for: .appleTVHD)).variantCount == 1)
     }
+
+    @Test func `lists the best variant at or below 720p first so playback starts sharp`() throws {
+        let text = try #require(HLSMasterPlaylist.filtered(master, for: .appleTVHD)).text
+        let first = try #require(variants(text).first)
+        #expect(first.contains("RESOLUTION=1280x720"))
+    }
 }
