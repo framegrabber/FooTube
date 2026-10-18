@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
 // floor-guard.mjs — diff-scoped enforcement of the CONSTRAINTS.md floor (Swift adaptation of the
 // constraint-driven-development reference). Exit 0 clean, 1 violation, 2 could not run.
 // Usage: node scripts/floor-guard.mjs [--base <ref>]   (default: origin/main if it exists, else main)
@@ -56,11 +57,21 @@ for (const line of diff.split('\n')) {
 
 const findings = [];
 const flag = (rule, f, text) => findings.push({ rule, file: f, text: text.trim().slice(0, 120) });
+// `.constraintsignore`: one glob per line (`**` any depth, `*` within a segment). Every entry must
+// be a tracked exception in CONSTRAINTS.md. Ignored paths skip the pattern checks only.
+const ignoreGlobs = (() => {
+  let text = '';
+  try { text = readFileSync('.constraintsignore', 'utf8'); } catch { return []; }
+  return text.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((glob) =>
+    new RegExp('^' + glob.split('**').map((part) => part.split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*')).join('.*') + '$'));
+})();
+const isIgnored = (f) => ignoreGlobs.some((re) => re.test(f));
 const isTest = (f) => /(^|\/)Tests\/|Tests?\.swift$/.test(f);
 const isConstraints = (f) => /CONSTRAINTS\.md$/.test(f);
 // Only code and build config are scanned for patterns; prose (specs, plans, this guard's own
 // pattern list) legitimately names the forbidden forms.
-const isScanned = (f) => /\.(swift|ya?ml|xcconfig|plist|entitlements)$/.test(f) || /(^|\/)Package\.swift$/.test(f);
+const isScanned = (f) => (/\.(swift|ya?ml|xcconfig|plist|entitlements)$/.test(f) || /(^|\/)Package\.swift$/.test(f)) && !isIgnored(f);
+const isIgnoreFile = (f) => f === '.constraintsignore';
 
 // 1. Silenced checker.
 const SUPPRESSIONS = /swiftlint:disable|swiftformat:disable|gitleaks:allow|nosemgrep|@unchecked\s+Sendable|nonisolated\(unsafe\)|@preconcurrency|-suppress-warnings|SWIFT_TREAT_WARNINGS_AS_ERRORS:\s*NO/;

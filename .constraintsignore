@@ -1,0 +1,3 @@
+# Paths exempt from the floor guard's pattern checks. Each entry is a tracked exception in CONSTRAINTS.md.
+# E1: vendored upstream code (see Packages/InnerTubeKit/VENDORED.md)
+Packages/InnerTubeKit/**

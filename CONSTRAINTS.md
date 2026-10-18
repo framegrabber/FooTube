@@ -6,7 +6,7 @@ Read this file before writing code. Do not weaken it to make a change pass. Ever
 
 ## Floor (always enforced)
 
-Checked by `node scripts/floor-guard.mjs` on the diff against `main` (or `origin/main` once a remote exists), including untracked files.
+Checked by `node scripts/floor-guard.mjs` on the diff against `main` (or `origin/main` once a remote exists), including untracked files. Paths in `.constraintsignore` skip the pattern checks; each must be an Exceptions row below.
 
 - No new suppressions: `swiftlint:disable`, `swiftformat:disable`, `gitleaks:allow`, `nosemgrep`, `@unchecked Sendable`, `nonisolated(unsafe)`, `@preconcurrency`, `-suppress-warnings`, `SWIFT_TREAT_WARNINGS_AS_ERRORS: NO`
 - No unfinished work: `TODO`, `FIXME`, `fatalError`/`preconditionFailure` with "not implemented"/"unimplemented", empty `catch {}`
@@ -45,3 +45,4 @@ External opinions in this bar: the Swift compiler, gitleaks rules, and the OSV v
 
 | ID | Rule | Path | Reason | Owner | Expires |
 |----|------|------|--------|-------|---------|
+| E1 | Floor pattern checks (TODO/FIXME, suppressions) | `Packages/InnerTubeKit/**` | Vendored upstream b5i/YouTubeKit, kept unmodified so updates stay mechanical (`VENDORED.md`); listed in `.constraintsignore` | @felix | 2027-01-17 |
