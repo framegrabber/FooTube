@@ -7,6 +7,7 @@ struct ChannelView: View {
     let channel: ChannelRef
     var onOpenChannel: ((ChannelRef) -> Void)?
 
+    @Environment(SubscriptionsModel.self) private var subscriptions
     @State private var page: ChannelPage?
     @State private var videos: [VideoSummary] = []
     @State private var next: PageCursor?
@@ -43,6 +44,10 @@ struct ChannelView: View {
                     Text(subscribers)
                         .foregroundStyle(.secondary)
                 }
+            }
+            Spacer()
+            Button(subscriptions.isSubscribed(channel.id) ? "Unsubscribe" : "Subscribe") {
+                subscriptions.toggle(page?.channel ?? channel, avatar: page?.avatar)
             }
         }
     }

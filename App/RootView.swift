@@ -5,10 +5,14 @@ import SwiftUI
 struct RootView: View {
     let catalog: any Catalog
     @State var playback: PlaybackController
+    @State var subscriptions: SubscriptionsModel
     @State private var didAutoplay = false
 
     var body: some View {
         TabView {
+            Tab("Subscriptions", systemImage: "person.2") {
+                SubscriptionsView(catalog: catalog)
+            }
             Tab("Search", systemImage: "magnifyingglass") {
                 SearchView(catalog: catalog)
             }
@@ -17,6 +21,7 @@ struct RootView: View {
             }
         }
         .environment(playback)
+        .environment(subscriptions)
         .overlay(alignment: .bottom) {
             StatusBanner(status: playback.status)
         }
@@ -43,10 +48,17 @@ struct RootView: View {
                 .onExitCommand { playback.session = nil }
         }
         .task {
-            // Debug/test hook: `-play <id or URL>` launch argument (simctl/devicectl launch). Once per launch.
-            guard !didAutoplay, let value = UserDefaults.standard.string(forKey: "play") else { return }
+            // Debug/test hooks (simctl/devicectl launch arguments), once per launch:
+            // `-play <id or URL>`, `-subscribe <channelID>` (comma-separated for several).
+            guard !didAutoplay else { return }
             didAutoplay = true
-            if let id = VideoID(parsing: value) {
+            let defaults = UserDefaults.standard
+            for id in defaults.string(forKey: "subscribe")?.split(separator: ",") ?? [] where !subscriptions.isSubscribed(String(id)) {
+                if let page = try? await catalog.channel(String(id)) {
+                    subscriptions.toggle(page.channel, avatar: page.avatar)
+                }
+            }
+            if let value = defaults.string(forKey: "play"), let id = VideoID(parsing: value) {
                 playback.play(id)
             }
         }
