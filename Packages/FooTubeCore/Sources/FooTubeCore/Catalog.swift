@@ -35,6 +35,8 @@ public extension [VideoSummary] {
 public struct PageCursor: Hashable, Sendable {
     let token: String
     let visitorData: String?
+    /// Channel continuation pages omit channel info; it is re-attached from here.
+    var channel: ChannelRef?
 }
 
 public struct ResultsPage: Sendable {
@@ -52,9 +54,19 @@ public enum CatalogError: Error, Hashable, Sendable {
     }
 }
 
+public struct ChannelPage: Sendable {
+    public let channel: ChannelRef
+    public let avatar: URL?
+    public let subscriberCount: String?
+    public let videos: ResultsPage
+}
+
 public protocol Catalog: Sendable {
     func search(_ query: String) async throws(CatalogError) -> ResultsPage
     func moreSearchResults(_ cursor: PageCursor) async throws(CatalogError) -> ResultsPage
+    /// Channel header plus the first page of its uploads ("Videos" tab), newest first.
+    func channel(_ id: String) async throws(CatalogError) -> ChannelPage
+    func moreChannelVideos(_ cursor: PageCursor) async throws(CatalogError) -> ResultsPage
 }
 
 /// Catalog backed by YouTube's InnerTube API via the vendored b5i/YouTubeKit (`InnerTubeKit`).
@@ -65,6 +77,37 @@ public struct InnerTubeCatalog: Catalog {
     private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "catalog")
 
     public init() {}
+
+    public func channel(_ id: String) async throws(CatalogError) -> ChannelPage {
+        do {
+            let model = YouTubeModel()
+            let header = try await ChannelInfosResponse.sendThrowingRequest(youtubeModel: model, data: [.browseId: id])
+            let withVideos = try await header.getChannelContentThrowing(forType: .videos, youtubeModel: model)
+            let ref = ChannelRef(id: id, name: header.name ?? withVideos.name)
+            let videos = (withVideos.channelContentStore[.videos] as? ChannelInfosResponse.Videos)?.items ?? []
+            let token = withVideos.channelContentContinuationStore[.videos] ?? nil
+            return ChannelPage(
+                channel: ref,
+                avatar: Self.preferredThumbnail(header.avatarThumbnails, width: 240),
+                subscriberCount: header.subscriberCount,
+                videos: page(videos, token: token, visitorData: nil, channel: ref),
+            )
+        } catch {
+            logger.error("channel \(id, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            throw .requestFailed(error.localizedDescription)
+        }
+    }
+
+    public func moreChannelVideos(_ cursor: PageCursor) async throws(CatalogError) -> ResultsPage {
+        do {
+            let response = try await ChannelInfosResponse.ContentContinuation<ChannelInfosResponse.Videos>
+                .sendThrowingRequest(youtubeModel: YouTubeModel(), data: [.continuation: cursor.token])
+            return page(response.contents?.items ?? [], token: response.newContinuationToken, visitorData: nil, channel: cursor.channel)
+        } catch {
+            logger.error("channel continuation failed: \(error.localizedDescription, privacy: .public)")
+            throw .requestFailed(error.localizedDescription)
+        }
+    }
 
     public func search(_ query: String) async throws(CatalogError) -> ResultsPage {
         do {
@@ -89,23 +132,33 @@ public struct InnerTubeCatalog: Catalog {
         }
     }
 
-    private func page(_ results: [any YTSearchResult], token: String?, visitorData: String?) -> ResultsPage {
-        let items = results.compactMap { ($0 as? YTVideo).flatMap(Self.summary) }
-        return ResultsPage(items: items, next: token.map { PageCursor(token: $0, visitorData: visitorData) })
+    private func page(
+        _ results: [any YTSearchResult],
+        token: String?,
+        visitorData: String?,
+        channel: ChannelRef? = nil,
+    ) -> ResultsPage {
+        let items = results.compactMap { ($0 as? YTVideo).flatMap { Self.summary($0, channel: channel) } }
+        return ResultsPage(items: items, next: token.map { PageCursor(token: $0, visitorData: visitorData, channel: channel) })
     }
 
-    static func summary(_ video: YTVideo) -> VideoSummary? {
+    /// `channel` fills in the channel when the result has none (channel tabs and their continuations).
+    static func summary(_ video: YTVideo, channel: ChannelRef? = nil) -> VideoSummary? {
         guard let id = VideoID(video.videoId) else { return nil }
-        let byWidth = video.thumbnails.sorted { ($0.width ?? 0) < ($1.width ?? 0) }
-        let thumbnail = byWidth.first { ($0.width ?? 0) >= preferredThumbnailWidth } ?? byWidth.last
         return VideoSummary(
             id: id,
             title: video.title ?? "",
-            channel: video.channel.map { ChannelRef(id: $0.channelId, name: $0.name) },
+            channel: video.channel.map { ChannelRef(id: $0.channelId, name: $0.name) } ?? channel,
             duration: video.timeLength.flatMap { $0.isEmpty ? nil : $0 },
             viewCount: video.viewCount,
             published: video.timePosted,
-            thumbnail: thumbnail?.url,
+            thumbnail: preferredThumbnail(video.thumbnails, width: preferredThumbnailWidth),
         )
+    }
+
+    /// Smallest thumbnail at least `width` wide, else the largest available.
+    static func preferredThumbnail(_ thumbnails: [YTThumbnail], width: Int) -> URL? {
+        let byWidth = thumbnails.sorted { ($0.width ?? 0) < ($1.width ?? 0) }
+        return (byWidth.first { ($0.width ?? 0) >= width } ?? byWidth.last)?.url
     }
 }

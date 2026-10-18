@@ -22,4 +22,18 @@ struct CatalogNetworkTests {
         let new = second.items.filter { item in !first.items.contains { $0.id == item.id } }
         #expect(new.count >= second.items.count / 2)
     }
+
+    @Test func `channel page lists uploads with channel info on every page`() async throws {
+        let catalog = InnerTubeCatalog()
+        let blender = "UCSMOQeBJ2RAnuFungnQOxLg" // Blender
+        let page = try await catalog.channel(blender)
+        print("RESULT channel \(page.channel.name ?? "?"): \(page.videos.items.count) videos, subs \(page.subscriberCount ?? "?"), avatar \(page.avatar != nil)")
+        #expect(page.channel.name?.isEmpty == false)
+        #expect(page.videos.items.count >= 10)
+        #expect(page.videos.items.allSatisfy { $0.channel?.id == blender })
+        let more = try await catalog.moreChannelVideos(#require(page.videos.next))
+        print("RESULT channel page 2: \(more.items.count) videos")
+        #expect(!more.items.isEmpty)
+        #expect(more.items.allSatisfy { $0.channel?.id == blender })
+    }
 }

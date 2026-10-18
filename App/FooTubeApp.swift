@@ -5,7 +5,10 @@ import SwiftUI
 struct FooTubeApp: App {
     var body: some Scene {
         WindowGroup {
-            HomeView(resolver: YouTubeKitResolver(), sponsorBlock: SponsorBlockClient())
+            RootView(
+                catalog: InnerTubeCatalog(),
+                playback: PlaybackController(resolver: YouTubeKitResolver(), sponsorBlock: SponsorBlockClient()),
+            )
         }
     }
 }
