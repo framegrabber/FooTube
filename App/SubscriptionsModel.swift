@@ -9,12 +9,11 @@ final class SubscriptionsModel {
     private(set) var subscriptions: [Subscription] = []
     private(set) var lastError: String?
 
-    private let store: SubscriptionStore?
+    private let store: SubscriptionStore
 
-    init(store: SubscriptionStore?, error: String? = nil) {
+    init(store: SubscriptionStore) {
         self.store = store
-        lastError = error
-        reload()
+        subscriptions = store.channels()
     }
 
     func isSubscribed(_ channelID: String) -> Bool {
@@ -22,25 +21,16 @@ final class SubscriptionsModel {
     }
 
     func toggle(_ channel: ChannelRef, avatar: URL?) {
-        guard let store else { return }
         do {
             if isSubscribed(channel.id) {
                 try store.unsubscribe(channel.id)
             } else {
                 try store.subscribe(channel, avatar: avatar)
             }
-            reload()
+            subscriptions = store.channels()
+            lastError = nil
         } catch {
             lastError = "Couldn't save subscription: \(error.localizedDescription)"
-        }
-    }
-
-    private func reload() {
-        guard let store else { return }
-        do {
-            subscriptions = try store.channels()
-        } catch {
-            lastError = "Couldn't load subscriptions: \(error.localizedDescription)"
         }
     }
 }

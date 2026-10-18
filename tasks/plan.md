@@ -14,7 +14,7 @@ All device-independent tasks (T1–T4, T9–T15) are done and verified in the `A
 - **Playback: `AVPlayerViewController` with a filtered HLS master** (changed after T2, see `tasks/results.md`). YouTube's visionOS client offers an HLS master for VOD and live with H.264 variants up to 1080p plus AAC audio renditions. FooTubeCore filters it to variants the Apple TV HD can decode and the app serves the filtered playlist to AVPlayer through an `AVAssetResourceLoaderDelegate`. This gives 1080p, adaptive bitrate and the system player UI from the MVP on. Muxed H.264+AAC files remain a fallback (often HTTP 403 today).
 - **Phase 2 is now conditional.** Only if filtered HLS fails on the device (T6): try `AVMutableComposition` of video-only + audio-only, then MPVKit (needs approval per SPEC).
 - **Catalog: b5i/YouTubeKit vendored as `Packages/InnerTubeKit`**, because both YouTubeKit packages share the SwiftPM identity, product and target name `YouTubeKit`.
-- **Local data: SwiftData**, no account, no sync (sync is out of scope: CloudKit needs the paid program).
+- **Local data: `UserDefaults` (JSON list)** for subscriptions, changed from SwiftData after review: on tvOS only `UserDefaults` (~500 KB) is guaranteed persistent; files can be purged while the app is not running. Feed cache lives in Caches (purge is fine). No account, no sync (CloudKit needs the paid program).
 - **Identifiers:** bundle `com.felixrothballer.FooTube`, team `X94768F5PD` (free; device builds expire after 7 days).
 
 ## Definition of Done (every task)

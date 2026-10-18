@@ -26,7 +26,7 @@ Source: [Apple TV HD technical specifications](https://support.apple.com/en-us/1
 - XcodeGen 2.46 (`project.yml`; generated `.xcodeproj` is not committed)
 - Local Swift package `FooTubeCore` for all non-UI logic; Swift Testing for tests
 - [alexeichhorn/YouTubeKit](https://github.com/alexeichhorn/YouTubeKit) (MIT): stream extraction, local only (`methods: [.local]`)
-- Later phases: [b5i/YouTubeKit](https://github.com/b5i/YouTubeKit) vendored as `InnerTubeKit` (search/channels); [MPVKit](https://github.com/mpvkit/MPVKit) only if AVFoundation cannot combine separate audio and video streams; SponsorBlock REST API; SwiftData
+- Later phases: [b5i/YouTubeKit](https://github.com/b5i/YouTubeKit) vendored as `InnerTubeKit` (search/channels); [MPVKit](https://github.com/mpvkit/MPVKit) only if AVFoundation cannot combine separate audio and video streams; SponsorBlock REST API; `UserDefaults` for subscriptions (the persistent local store on tvOS)
 - Dev tools: xcbeautify, swiftformat, xcode-build-server (sourcekit-lsp), yt-dlp (reference extractor for cross-checking)
 
 ## Commands

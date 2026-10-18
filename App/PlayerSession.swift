@@ -117,7 +117,12 @@ final class PlayerSession: Identifiable {
     private func seek(past segment: SkipSegment) {
         let line = "\(source.id) skipping \(segment.category.rawValue) \(segment.start)-\(segment.end)"
         logger.info("\(line, privacy: .public)")
-        player.seek(to: CMTime(seconds: segment.end, preferredTimescale: 600))
+        // Zero tolerance before the end: a keyframe-snapped seek could land inside the segment.
+        player.seek(
+            to: CMTime(seconds: segment.end, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: CMTime(seconds: 0.5, preferredTimescale: 600),
+        )
     }
 
     private func show(notice text: String) {

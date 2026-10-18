@@ -1,87 +1,68 @@
 import Foundation
-import SwiftData
 
-/// A subscribed channel as the UI sees it (value type, safe to pass around).
-public struct Subscription: Identifiable, Hashable, Sendable {
+/// A subscribed channel.
+public struct Subscription: Identifiable, Codable, Hashable, Sendable {
     public let id: String
     public let name: String
     public let avatar: URL?
+
+    public init(id: String, name: String, avatar: URL?) {
+        self.id = id
+        self.name = name
+        self.avatar = avatar
+    }
 
     public var channel: ChannelRef {
         ChannelRef(id: id, name: name)
     }
 }
 
-@Model
-final class SubscribedChannel {
-    @Attribute(.unique) var channelID: String
-    var name: String
-    var avatarURL: URL?
-    var subscribedAt: Date
+/// Subscriptions stored only on this device. No Google account involved.
+///
+/// Kept in `UserDefaults` as a small JSON list: on tvOS that is the persistent local store
+/// (up to ~500 KB); files in Application Support or Caches can be purged while the app is not
+/// running. A few hundred channels fit comfortably.
+public struct SubscriptionStore {
+    private let defaults: UserDefaults
+    private let key = "subscriptions.v1"
 
-    init(channelID: String, name: String, avatarURL: URL?, subscribedAt: Date) {
-        self.channelID = channelID
-        self.name = name
-        self.avatarURL = avatarURL
-        self.subscribedAt = subscribedAt
-    }
-}
-
-/// Subscriptions stored only on this device (SwiftData). No Google account involved.
-@MainActor
-public final class SubscriptionStore {
-    private let container: ModelContainer
-    private var context: ModelContext {
-        container.mainContext
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
     }
 
-    /// Default on-disk store in Application Support.
-    public convenience init() throws {
-        try self.init(configuration: ModelConfiguration("Subscriptions"))
+    /// Alphabetical by name.
+    public func channels() -> [Subscription] {
+        guard let data = defaults.data(forKey: key),
+              let list = try? JSONDecoder().decode([Subscription].self, from: data) else { return [] }
+        return list.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
-    public convenience init(url: URL) throws {
-        try self.init(configuration: ModelConfiguration(url: url))
-    }
-
-    public convenience init(inMemory: Bool) throws {
-        try self.init(configuration: ModelConfiguration(isStoredInMemoryOnly: inMemory))
-    }
-
-    private init(configuration: ModelConfiguration) throws {
-        container = try ModelContainer(for: SubscribedChannel.self, configurations: configuration)
-    }
-
-    public func channels() throws -> [Subscription] {
-        try context.fetch(FetchDescriptor<SubscribedChannel>(sortBy: [SortDescriptor(\.name)]))
-            .map { Subscription(id: $0.channelID, name: $0.name, avatar: $0.avatarURL) }
-    }
-
-    public func isSubscribed(_ channelID: String) throws -> Bool {
-        try existing(channelID) != nil
+    public func isSubscribed(_ channelID: String) -> Bool {
+        channels().contains { $0.id == channelID }
     }
 
     /// Adds the channel, or refreshes its name/avatar if already subscribed.
     public func subscribe(_ channel: ChannelRef, avatar: URL?) throws {
-        if let entry = try existing(channel.id) {
-            entry.name = channel.name ?? entry.name
-            entry.avatarURL = avatar ?? entry.avatarURL
+        var list = channels()
+        let existing = list.firstIndex { $0.id == channel.id }
+        let entry = Subscription(
+            id: channel.id,
+            name: channel.name ?? existing.map { list[$0].name } ?? channel.id,
+            avatar: avatar ?? existing.flatMap { list[$0].avatar },
+        )
+        if let existing {
+            list[existing] = entry
         } else {
-            context.insert(SubscribedChannel(channelID: channel.id, name: channel.name ?? channel.id, avatarURL: avatar, subscribedAt: .now))
+            list.append(entry)
         }
-        try context.save()
+        try save(list)
     }
 
     public func unsubscribe(_ channelID: String) throws {
-        if let entry = try existing(channelID) {
-            context.delete(entry)
-            try context.save()
-        }
+        try save(channels().filter { $0.id != channelID })
     }
 
-    private func existing(_ channelID: String) throws -> SubscribedChannel? {
-        var descriptor = FetchDescriptor<SubscribedChannel>(predicate: #Predicate { $0.channelID == channelID })
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
+    private func save(_ list: [Subscription]) throws {
+        try defaults.set(JSONEncoder().encode(list), forKey: key)
     }
 }

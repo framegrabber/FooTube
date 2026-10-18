@@ -6,6 +6,7 @@ struct SearchView: View {
     let catalog: any Catalog
 
     @State private var query = ""
+    @State private var searchedQuery: String?
     @State private var results: [VideoSummary] = []
     @State private var next: PageCursor?
     @State private var isLoadingMore = false
@@ -24,15 +25,16 @@ struct SearchView: View {
             }
             .searchable(text: $query, prompt: "Search YouTube")
             .task(id: query) {
-                // Debounce typing; an empty query keeps the last results.
+                // Debounce typing. An empty query keeps the last results; returning to this view
+                // (task re-runs on appear) must not replace paged results with page 1 again.
                 let text = query.trimmingCharacters(in: .whitespaces)
-                guard !text.isEmpty else { return }
+                guard !text.isEmpty, text != searchedQuery else { return }
                 try? await Task.sleep(for: .milliseconds(600))
                 guard !Task.isCancelled else { return }
                 await search(text)
             }
             .navigationDestination(for: ChannelRef.self) { channel in
-                ChannelView(catalog: catalog, channel: channel, onOpenChannel: { path.append($0) })
+                ChannelView(catalog: catalog, channel: channel)
             }
         }
         .onAppear {
@@ -52,6 +54,7 @@ struct SearchView: View {
         do throws(CatalogError) {
             let page = try await catalog.search(text)
             guard !Task.isCancelled else { return }
+            searchedQuery = text
             results = [].appendingUnique(page.items)
             next = page.next
             error = nil
@@ -63,10 +66,12 @@ struct SearchView: View {
     private func loadMore() {
         guard let cursor = next, !isLoadingMore else { return }
         isLoadingMore = true
+        let forQuery = searchedQuery
         Task {
             defer { isLoadingMore = false }
             do throws(CatalogError) {
                 let page = try await catalog.moreSearchResults(cursor)
+                guard forQuery == searchedQuery else { return } // a new search started meanwhile
                 results = results.appendingUnique(page.items)
                 next = page.next
             } catch {

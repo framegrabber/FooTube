@@ -5,7 +5,6 @@ import SwiftUI
 struct ChannelView: View {
     let catalog: any Catalog
     let channel: ChannelRef
-    var onOpenChannel: ((ChannelRef) -> Void)?
 
     @Environment(SubscriptionsModel.self) private var subscriptions
     @State private var page: ChannelPage?
@@ -21,7 +20,8 @@ struct ChannelView: View {
                 if let error {
                     Text(error).foregroundStyle(.red)
                 }
-                VideoGrid(videos: videos, onReachEnd: loadMore, onOpenChannel: onOpenChannel)
+                // All uploads belong to this channel, so no "Open channel" menu here.
+                VideoGrid(videos: videos, onReachEnd: loadMore)
             }
             .padding(80)
         }
@@ -49,10 +49,12 @@ struct ChannelView: View {
             Button(subscriptions.isSubscribed(channel.id) ? "Unsubscribe" : "Subscribe") {
                 subscriptions.toggle(page?.channel ?? channel, avatar: page?.avatar)
             }
+            .disabled(page == nil) // wait for the real name and avatar
         }
     }
 
     private func load() async {
+        guard page == nil else { return } // `.task` re-runs when navigating back; keep paged results
         do throws(CatalogError) {
             let loaded = try await catalog.channel(channel.id)
             page = loaded

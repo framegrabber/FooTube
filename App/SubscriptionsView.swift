@@ -32,7 +32,7 @@ struct SubscriptionsView: View {
                             }
                             Spacer()
                             Button("Refresh") {
-                                Task { await feed.refresh(subscriptions.subscriptions) }
+                                Task { await feed.refresh(subscriptions.subscriptions, force: true) }
                             }
                             .disabled(feed.isRefreshing)
                         }
@@ -60,7 +60,7 @@ struct SubscriptionsView: View {
                 await feed.refresh(subscriptions.subscriptions)
             }
             .navigationDestination(for: ChannelRef.self) { channel in
-                ChannelView(catalog: catalog, channel: channel, onOpenChannel: { path.append($0) })
+                ChannelView(catalog: catalog, channel: channel)
             }
         }
     }

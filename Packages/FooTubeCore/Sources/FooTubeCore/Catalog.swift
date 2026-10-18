@@ -82,7 +82,7 @@ public struct InnerTubeCatalog: Catalog {
     /// English responses keep relative ages ("3 days ago") parseable for the feed.
     private static func model() -> YouTubeModel {
         let model = YouTubeModel()
-        model.selectedLocale = "en-US"
+        model.selectedLocale = "en-\(Locale.current.region?.identifier ?? "US")"
         return model
     }
 

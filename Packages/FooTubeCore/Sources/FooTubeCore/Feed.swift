@@ -24,32 +24,34 @@ public struct FeedService: Sendable {
         self.catalog = catalog
     }
 
-    /// Fetches the first uploads page of every channel. Channels that fail are skipped (logged);
-    /// returns nil only if every channel failed.
-    public func refresh(_ channels: [ChannelRef]) async -> FeedSnapshot? {
-        var pages: [[VideoSummary]] = []
+    /// Fetches the first uploads page of every channel, at most `maxConcurrentChannels` at a time.
+    /// A channel that fails keeps its videos from `previous` (logged). Returns nil only if every
+    /// channel failed. Equal ages are ordered by channel order, not by network completion.
+    public func refresh(_ channels: [ChannelRef], previous: FeedSnapshot? = nil) async -> FeedSnapshot? {
+        var pages = [[VideoSummary]](repeating: [], count: channels.count)
         var failures = 0
-        await withTaskGroup(of: [VideoSummary]?.self) { group in
-            var pending = channels.makeIterator()
+        await withTaskGroup(of: (Int, [VideoSummary]?).self) { group in
+            var pending = channels.enumerated().makeIterator()
             func enqueue() {
-                guard let channel = pending.next() else { return }
+                guard let (index, channel) = pending.next() else { return }
                 group.addTask { [catalog, logger] in
                     do throws(CatalogError) {
-                        return try await catalog.channel(channel.id).videos.items
+                        return try await (index, catalog.channel(channel.id).videos.items)
                     } catch {
                         logger.error("\(channel.id, privacy: .public): \(error.message, privacy: .public)")
-                        return nil
+                        return (index, nil)
                     }
                 }
             }
             for _ in 0 ..< Self.maxConcurrentChannels {
                 enqueue()
             }
-            for await page in group {
+            for await (index, page) in group {
                 if let page {
-                    pages.append(page)
+                    pages[index] = page
                 } else {
                     failures += 1
+                    pages[index] = previous?.items.filter { $0.channel?.id == channels[index].id } ?? []
                 }
                 enqueue()
             }

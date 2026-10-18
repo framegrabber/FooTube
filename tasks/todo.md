@@ -296,7 +296,7 @@ Every task's verification includes `scripts/check.sh task` (see CONSTRAINTS.md) 
 
 ## Task 14: Local subscriptions store
 
-**Description:** SwiftData model for subscribed channels; Subscribe/Unsubscribe on the channel page; subscriptions list screen.
+**Description:** Subscriptions stored on the device (`UserDefaults` JSON; SwiftData was dropped because tvOS may purge files); Subscribe/Unsubscribe on the channel page; subscriptions list screen.
 
 **Acceptance criteria:**
 - [ ] Subscribing persists across relaunch; unsubscribing removes it
