@@ -87,6 +87,7 @@ for (const { file, text } of added) {
     if (SKIPS.test(text)) flag('test-made-easier', file, text);
   }
   if (isConstraints(file) && /^\| *(W|E)\d+ *\|/.test(text)) flag('new-exception', file, text);
+  if (isIgnoreFile(file) && text.trim() && !text.trim().startsWith('#')) flag('new-ignore', file, text);
 }
 
 for (const f of deleted) if (isTest(f) && f.endsWith('.swift')) flag('test-deleted', f, 'file deleted');
