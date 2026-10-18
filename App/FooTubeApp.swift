@@ -5,7 +5,7 @@ import SwiftUI
 struct FooTubeApp: App {
     var body: some Scene {
         WindowGroup {
-            PlayByIDView(resolver: YouTubeKitResolver())
+            HomeView(resolver: YouTubeKitResolver())
         }
     }
 }
