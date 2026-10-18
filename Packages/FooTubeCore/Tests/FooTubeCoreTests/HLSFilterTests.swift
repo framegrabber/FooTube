@@ -60,4 +60,13 @@ struct HLSFilterTests {
         """
         #expect(HLSMasterPlaylist.filtered(text, for: .appleTVHD) == nil)
     }
+
+    @Test func `ignores supplemental codecs attribute`() throws {
+        let text = """
+        #EXTM3U
+        #EXT-X-STREAM-INF:SUPPLEMENTAL-CODECS="vp09.00.40.08",BANDWIDTH=1,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1920x1080
+        https://example.invalid/h264.m3u8
+        """
+        #expect(try #require(HLSMasterPlaylist.filtered(text, for: .appleTVHD)).variantCount == 1)
+    }
 }

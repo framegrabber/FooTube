@@ -61,14 +61,23 @@ public enum HLSMasterPlaylist {
         return height
     }
 
-    /// Value of `NAME=value` or `NAME="value"` in an attribute list.
+    /// Value of `NAME=value` or `NAME="value"` in an attribute list. The name must start the list
+    /// or follow a comma, so `CODECS` does not match `SUPPLEMENTAL-CODECS`.
     private static func attribute(_ name: String, in line: Substring) -> String? {
-        guard let range = line.range(of: "\(name)=") else { return nil }
-        let rest = line[range.upperBound...]
-        if rest.hasPrefix("\"") {
-            let body = rest.dropFirst()
-            return body.firstIndex(of: "\"").map { String(body[..<$0]) }
+        var searchStart = line.startIndex
+        while let range = line.range(of: "\(name)=", range: searchStart ..< line.endIndex) {
+            let preceding = range.lowerBound == line.startIndex ? nil : line[line.index(before: range.lowerBound)]
+            guard preceding == ":" || preceding == "," else {
+                searchStart = range.upperBound
+                continue
+            }
+            let rest = line[range.upperBound...]
+            if rest.hasPrefix("\"") {
+                let body = rest.dropFirst()
+                return body.firstIndex(of: "\"").map { String(body[..<$0]) }
+            }
+            return String(rest.prefix { $0 != "," })
         }
-        return String(rest.prefix { $0 != "," })
+        return nil
     }
 }

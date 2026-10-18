@@ -123,28 +123,28 @@ Every task's verification includes `scripts/check.sh task` (see CONSTRAINTS.md) 
 
 ## Phase 2: 1080p
 
-## Task 6: Spike — combine separate video + audio streams
+## Task 6: Verify filtered-HLS 1080p playback on the Apple TV HD
 
-**Description:** With a 1080p `avc1` video-only URL and an AAC audio-only URL from the resolver, try in order: (a) `AVMutableComposition` from two remote `AVURLAsset`s in `AVPlayer`; (b) a locally served HLS playlist with `EXT-X-MAP`/`EXT-X-BYTERANGE` over the fMP4 files; (c) MPVKit — only after the human approves the dependency. Stop at the first that plays with A/V sync after seeking on the Apple TV HD. Record the outcome as an ADR.
+**Description:** Since T2, playback uses YouTube's HLS master filtered to H.264 ≤ 1080p (see `tasks/results.md`). On the device, play the 1080p test videos for 5 minutes each, seek, and watch the diagnostics overlay for the selected variant and dropped frames. Record the decision (HLS-first, why composition/MPVKit are not needed or are) as an ADR.
 
 **Acceptance criteria:**
-- [ ] One approach plays 1080p with audio in sync after a seek, on the device
-- [ ] ADR in `docs/adr/0001-1080p-playback.md` with evidence for each approach tried
+- [ ] SPEC success criterion 2 on the Apple TV HD with filtered HLS, or a documented failure that triggers T7
+- [ ] ADR in `docs/adr/0001-hls-first-playback.md` with the evidence
 
 **Verification:**
-- [ ] `scripts/check.sh task`; human confirms on TV
+- [ ] `scripts/check.sh task`; human confirms on TV; overlay shows 1080p
 
 **Dependencies:** Task 5
 
-**Files likely touched:** `App/Spike/AdaptivePlaybackSpike.swift`, `docs/adr/0001-1080p-playback.md`
+**Files likely touched:** `docs/adr/0001-hls-first-playback.md`, `tasks/results.md`
 
-**Estimated scope:** M · **Skills:** source-driven-development, doubt-driven-development, documentation-and-adrs
+**Estimated scope:** S · **Skills:** performance-optimization, documentation-and-adrs, doubt-driven-development
 
 ---
 
-## Task 7: 1080p adaptive playback via the chosen engine
+## Task 7: (only if T6 fails) Adaptive video + audio playback
 
-**Description:** Resolver returns an adaptive pair (best `avc1` ≤ 1080p video-only + AAC audio-only) alongside the muxed fallback. `PlayerEngine` abstraction; the T6 approach becomes the default engine; spike code removed.
+**Description:** Resolver returns an adaptive pair (best `avc1` ≤ 1080p video-only + AAC audio-only). Try `AVMutableComposition` of two remote `AVURLAsset`s first; MPVKit only after the human approves the dependency. `PlayerEngine` abstraction with filtered HLS / muxed as fallback.
 
 **Acceptance criteria:**
 - [ ] SPEC success criterion 2 on the Apple TV HD
@@ -153,21 +153,21 @@ Every task's verification includes `scripts/check.sh task` (see CONSTRAINTS.md) 
 **Verification:**
 - [ ] `scripts/check.sh task`; overlay shows 1080p on device; human confirms sync after seek
 
-**Dependencies:** Task 6
+**Dependencies:** Task 6 failing
 
-**Files likely touched:** `Sources/FooTubeCore/{StreamResolver,YouTubeKitResolver,PlayerEngine}.swift`, `App/PlayerView.swift`, `Tests/FooTubeCoreTests/StreamSelectionTests.swift`
+**Files likely touched:** `Sources/FooTubeCore/{StreamCandidate,YouTubeKitResolver,PlayerEngine}.swift`, `App/PlayerView.swift`, `Tests/FooTubeCoreTests/StreamSelectionTests.swift`
 
-**Estimated scope:** M · **Skills:** api-and-interface-design, test-driven-development, performance-optimization
+**Estimated scope:** M · **Skills:** source-driven-development, api-and-interface-design, test-driven-development
 
 ---
 
-## Task 8: Siri Remote controls and engine fallback
+## Task 8: (only if T7 replaces AVPlayerViewController) Siri Remote controls
 
-**Description:** If the chosen engine lacks system transport controls (e.g. MPVKit), add play/pause, scrub, ±10 s, Menu to exit for the 1st-gen Siri Remote touch surface. If the adaptive engine fails to start, fall back to muxed AVPlayer playback automatically.
+**Description:** If the T7 engine lacks system transport controls (e.g. MPVKit), add play/pause, scrub, ±10 s, Menu to exit for the 1st-gen Siri Remote touch surface, and fall back to AVPlayer automatically if it fails to start.
 
 **Acceptance criteria:**
-- [ ] Play/pause, scrub, skip work with the remote on the default engine
-- [ ] A forced adaptive failure falls back to muxed playback, logged
+- [ ] Play/pause, scrub, skip work with the remote on the T7 engine
+- [ ] A forced engine failure falls back to AVPlayer, logged
 
 **Verification:**
 - [ ] `scripts/check.sh task`; human exercises controls on TV; log shows fallback
@@ -176,7 +176,7 @@ Every task's verification includes `scripts/check.sh task` (see CONSTRAINTS.md) 
 
 **Files likely touched:** `App/PlayerView.swift`, `App/PlayerControls.swift`, `Sources/FooTubeCore/PlayerEngine.swift`
 
-**Estimated scope:** M (S if AVPlayer UI is kept) · **Skills:** frontend-ui-engineering, debugging-and-error-recovery
+**Estimated scope:** M · **Skills:** frontend-ui-engineering, debugging-and-error-recovery
 
 ---
 

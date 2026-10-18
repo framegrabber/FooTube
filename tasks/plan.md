@@ -8,8 +8,8 @@ A sideloaded tvOS app for an **Apple TV HD (A8, H.264-only, 1080p, tvOS 26)** th
 - **Generated project.** `project.yml` + XcodeGen; `FooTube.xcodeproj` is gitignored. `xcode-build-server` provides sourcekit-lsp support.
 - **Extraction: alexeichhorn/YouTubeKit, local only** (`methods: [.local]`, no remote fallback per SPEC). Behind a `StreamResolver` protocol.
 - **Format policy for Apple TV HD:** video `avc1` (H.264) only, height ≤ 1080; audio `mp4a` (AAC) preferred. Encoded once in FooTubeCore's selection rules and unit-tested.
-- **Playback v1: `AVPlayerViewController`** with a muxed `avc1` stream (likely 360p, maybe 720p).
-- **Playback v2 (1080p): decided by spike T6.** YouTube serves 1080p only as separate video-only + audio-only streams. Try AVFoundation first (an `AVMutableComposition` from two remote `AVURLAsset`s, or a locally generated HLS playlist over byte ranges); add MPVKit only if both fail (dependency needs approval per SPEC). Rationale: on H.264-only hardware MPVKit's VP9/AV1 advantage is irrelevant, and AVFoundation keeps the system player UI and the smallest binary.
+- **Playback: `AVPlayerViewController` with a filtered HLS master** (changed after T2, see `tasks/results.md`). YouTube's visionOS client offers an HLS master for VOD and live with H.264 variants up to 1080p plus AAC audio renditions. FooTubeCore filters it to variants the Apple TV HD can decode and the app serves the filtered playlist to AVPlayer through an `AVAssetResourceLoaderDelegate`. This gives 1080p, adaptive bitrate and the system player UI from the MVP on. Muxed H.264+AAC files remain a fallback (often HTTP 403 today).
+- **Phase 2 is now conditional.** Only if filtered HLS fails on the device (T6): try `AVMutableComposition` of video-only + audio-only, then MPVKit (needs approval per SPEC).
 - **Catalog: b5i/YouTubeKit vendored as `Packages/InnerTubeKit`**, because both YouTubeKit packages share the SwiftPM identity, product and target name `YouTubeKit`.
 - **Local data: SwiftData**, no account, no sync (sync is out of scope: CloudKit needs the paid program).
 - **Identifiers:** bundle `com.felixrothballer.FooTube`, team `X94768F5PD` (free; device builds expire after 7 days).
@@ -66,9 +66,9 @@ Details in `tasks/todo.md`.
 - [ ] SPEC success criterion 1 met on the Apple TV HD
 
 ### Phase 2: 1080p
-- [ ] T6: Spike: combine separate video + audio streams (AVFoundation first, MPVKit fallback)
-- [ ] T7: 1080p adaptive playback via the chosen engine
-- [ ] T8: Siri Remote controls and engine fallback
+- [ ] T6: Verify filtered-HLS 1080p playback on the Apple TV HD; ADR
+- [ ] T7: (only if T6 fails) adaptive video+audio playback via composition, then MPVKit
+- [ ] T8: (only if T7 replaces AVPlayerViewController) Siri Remote controls and engine fallback
 
 ### Checkpoint C: SPEC success criterion 2 on device
 
@@ -94,9 +94,9 @@ Details in `tasks/todo.md`.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | YouTube changes break extraction / PO-token enforcement expands | High | T2 fail-fast gate; `StreamResolver` abstraction; yt-dlp cross-check; remote fallback or Yattee Server only with approval |
-| No muxed `avc1` stream for some videos | Med | Error shown clearly in MVP; Phase 2 adaptive playback covers it |
-| AVFoundation cannot combine remote fMP4 video + audio | Med | T6 tries composition and local HLS; MPVKit (with approval) as fallback |
-| MPVKit too heavy for A8 / 2 GB | Med | Only if T6 needs it; hardware decode via VideoToolbox; measure on device at Checkpoint C |
+| No HLS offered for some videos (e.g. made-for-kids: YouTubeKit gets 0 streams) | Med | Clear error; muxed fallback; investigate YouTubeKit request differences vs yt-dlp `visionos` client if it matters |
+| Filtered HLS stutters or misbehaves on the A8 | Med | T6 on device; then composition/MPVKit (Phase 2 conditional tasks) |
+| YouTube stops offering HLS to the visionOS client | High | Muxed fallback; Phase 2 conditional tasks; monitor with the network test |
 | Stream URLs need client-matching headers | Med | T3 checks for 403 at playback; pass headers via asset options |
 | Simulator decodes with Mac hardware | Med | Device verification at T5 and every checkpoint |
 | A8 UI performance (thumbnail grids) | Med | Downsampled thumbnails, lazy grids; measured at Checkpoint D |
