@@ -54,6 +54,7 @@ final class PlayerSession: Identifiable {
     }
 
     func start() {
+        guard timeObserver == nil else { return }
         player.play()
         segmentsTask = Task { [sponsorBlock, id] in
             let segments = await sponsorBlock.segments(for: id)
@@ -65,7 +66,8 @@ final class PlayerSession: Identifiable {
         }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                self?.sample()
+                guard let self else { return }
+                sample()
                 try? await Task.sleep(for: .seconds(1))
             }
         }

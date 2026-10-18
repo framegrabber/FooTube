@@ -22,12 +22,42 @@ struct HLSFilterTests {
         #expect(filtered.variantCount == 7)
     }
 
-    @Test func `every kept variant is followed by its URI`() throws {
+    @Test func `each kept variant keeps its own URI, 720p first, VP9 URIs gone`() throws {
         let lines = try #require(HLSMasterPlaylist.filtered(master, for: .appleTVHD)).text
-            .split(separator: "\n", omittingEmptySubsequences: false)
-        for (index, line) in lines.enumerated() where line.hasPrefix("#EXT-X-STREAM-INF") {
-            #expect(lines[index + 1].hasPrefix("https://"))
-        }
+            .split(separator: "\n").map(String.init)
+        let uris = lines.filter { $0.hasPrefix("https://") }
+        #expect(uris == [8, 3, 4, 5, 6, 7, 9].map { "https://example.invalid/playlist/\($0).m3u8" })
+        let firstVariant = try #require(lines.firstIndex { $0.hasPrefix("#EXT-X-STREAM-INF") })
+        #expect(lines[firstVariant].contains("RESOLUTION=1280x720"))
+        #expect(lines[firstVariant + 1] == "https://example.invalid/playlist/8.m3u8")
+    }
+
+    @Test func `CRLF line endings are handled like LF`() throws {
+        let crlf = master.replacingOccurrences(of: "\n", with: "\r\n")
+        let filtered = try #require(HLSMasterPlaylist.filtered(crlf, for: .appleTVHD))
+        #expect(filtered.variantCount == 7)
+    }
+
+    @Test func `I-frame playlists the device cannot decode are dropped`() throws {
+        let text = """
+        #EXTM3U
+        #EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1,CODECS="vp09.00.40.08",RESOLUTION=1920x1080,URI="https://example.invalid/iframe-vp9.m3u8"
+        #EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1,CODECS="avc1.640028",RESOLUTION=1920x1080,URI="https://example.invalid/iframe-h264.m3u8"
+        #EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1920x1080
+        https://example.invalid/h264.m3u8
+        """
+        let filtered = try #require(HLSMasterPlaylist.filtered(text, for: .appleTVHD)).text
+        #expect(!filtered.contains("iframe-vp9"))
+        #expect(filtered.contains("iframe-h264"))
+    }
+
+    @Test func `non-AAC audio or subtitle codecs do not disqualify an H 264 variant`() throws {
+        let text = """
+        #EXTM3U
+        #EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.640028,ec-3,wvtt",RESOLUTION=1920x1080
+        https://example.invalid/h264.m3u8
+        """
+        #expect(try #require(HLSMasterPlaylist.filtered(text, for: .appleTVHD)).variantCount == 1)
     }
 
     @Test func `keeps header and rendition groups`() throws {

@@ -20,37 +20,44 @@ public struct YouTubeKitResolver: StreamResolver {
     public func resolve(_ videoID: VideoID) async throws(ResolveError) -> ResolvedStream {
         let video = YouTube(videoID: videoID.rawValue, methods: [.local])
 
-        var hlsError: (any Error)?
+        // What happened with HLS, carried into the error if the muxed fallback fails too.
+        let hlsOutcome: String
         do {
             if let master = try await video.livestreams.first(where: { $0.streamType == .hls })?.url {
                 if let stream = try await filteredHLS(videoID: videoID, master: master) {
                     logger.info("\(videoID, privacy: .public): \(stream.summary, privacy: .public)")
                     return stream
                 }
-                logger.info("\(videoID, privacy: .public): HLS offered but no decodable variant")
+                hlsOutcome = "HLS offered but no H.264 ≤ \(profile.maxHeight)p variant"
+            } else {
+                hlsOutcome = "no HLS offered"
             }
         } catch {
-            hlsError = error
+            hlsOutcome = "HLS failed (\(error.localizedDescription))"
         }
+        logger.info("\(videoID, privacy: .public): \(hlsOutcome, privacy: .public); trying muxed")
 
         let streams: [YouTubeKit.Stream]
         do {
+            // `streams` checks availability first, so its error (private, removed, …) is the precise one.
             streams = try await video.streams
         } catch {
-            let mapped = Self.map(hlsError ?? error)
+            let mapped = Self.map(error)
             logger.error("\(videoID, privacy: .public): \(mapped.message, privacy: .public)")
             throw mapped
         }
 
         let candidates = streams.map(Self.candidate)
         guard let best = StreamSelector.bestMuxed(candidates, for: profile), let height = best.height else {
-            let error = ResolveError.noPlayableStream(detail: "\(candidates.count) streams, no HLS, no muxed H.264 ≤ \(profile.maxHeight)p with AAC")
+            let error = ResolveError.noPlayableStream(
+                detail: "\(hlsOutcome); \(candidates.count) streams, none muxed H.264 ≤ \(profile.maxHeight)p with AAC",
+            )
             logger.error("\(videoID, privacy: .public): \(error.message, privacy: .public)")
             throw error
         }
         let status = await firstBytesStatus(best.url)
         guard status == 200 || status == 206 else {
-            let error = ResolveError.noPlayableStream(detail: "muxed itag \(best.itag) returned HTTP \(status)")
+            let error = ResolveError.noPlayableStream(detail: "\(hlsOutcome); muxed itag \(best.itag) returned HTTP \(status)")
             logger.error("\(videoID, privacy: .public): \(error.message, privacy: .public)")
             throw error
         }
@@ -60,7 +67,10 @@ public struct YouTubeKitResolver: StreamResolver {
     }
 
     private func filteredHLS(videoID: VideoID, master: URL) async throws -> ResolvedStream? {
-        let (data, _) = try await session.data(from: master)
+        let (data, response) = try await session.data(from: master)
+        if let status = (response as? HTTPURLResponse)?.statusCode, status != 200 {
+            throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: "master playlist HTTP \(status)"])
+        }
         guard let text = String(data: data, encoding: .utf8),
               let filtered = HLSMasterPlaylist.filtered(text, for: profile) else { return nil }
         return ResolvedStream(

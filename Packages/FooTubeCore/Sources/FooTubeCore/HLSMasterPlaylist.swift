@@ -24,8 +24,13 @@ public enum HLSMasterPlaylist {
         var pending: (info: Substring, height: Int)?
         var dropNextURI = false
 
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
-            if line.hasPrefix("#EXT-X-STREAM-INF:") {
+        for line in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            if line.hasPrefix("#EXT-X-I-FRAME-STREAM-INF:") {
+                // Trick-play playlist; its URI is an attribute, so it is a single line.
+                if decodableHeight(attributes: line, profile: profile) != nil {
+                    otherLines.append(line)
+                }
+            } else if line.hasPrefix("#EXT-X-STREAM-INF:") {
                 if let height = decodableHeight(attributes: line, profile: profile) {
                     pending = (line, height)
                     dropNextURI = false
@@ -69,17 +74,15 @@ public enum HLSMasterPlaylist {
         guard dimensions.count == 2, let height = dimensions.min() else { return nil }
 
         let videoCodecs = codecs.split(separator: ",")
-            .map { VideoCodec(codecString: $0.trimmingCharacters(in: .whitespaces)) }
-            .filter {
-                if case let .other(raw) = $0 {
-                    !raw.hasPrefix("mp4a")
-                } else {
-                    true
-                }
-            }
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { codec in videoCodecPrefixes.contains { codec.lowercased().hasPrefix($0) } }
+            .map(VideoCodec.init(codecString:))
         guard videoCodecs.count == 1, profile.canDecode(videoCodecs[0], height: height) else { return nil }
         return height
     }
+
+    /// RFC 6381 sample-entry prefixes of video codecs; everything else in CODECS (audio, subtitles) is ignored.
+    private static let videoCodecPrefixes = ["avc1", "avc3", "hvc1", "hev1", "dvh1", "dvhe", "vp08", "vp09", "av01"]
 
     /// Value of `NAME=value` or `NAME="value"` in an attribute list. The name must start the list
     /// or follow a comma, so `CODECS` does not match `SUPPLEMENTAL-CODECS`.

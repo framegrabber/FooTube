@@ -40,7 +40,7 @@ public enum ResolveError: Error, Hashable, Sendable {
     public var message: String {
         switch self {
         case let .noPlayableStream(detail): "No stream this Apple TV can play: \(detail)"
-        case let .unavailable(reason): "Video unavailable: \(reason)"
+        case let .unavailable(reason): "Can't play this video: \(reason)."
         case let .extractionFailed(reason): "Extraction failed: \(reason)"
         }
     }

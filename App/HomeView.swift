@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var input = ""
     @State private var state: ResolveState = .idle
     @State private var session: PlayerSession?
+    @State private var didAutoplay = false
     @State private var task: Task<Void, Never>?
 
     private enum ResolveState: Equatable {
@@ -77,11 +78,11 @@ struct HomeView: View {
                 .onExitCommand { self.session = nil }
         }
         .task {
-            // Debug/test hook: `-play <id or URL>` launch argument (simctl/devicectl launch).
-            if let value = UserDefaults.standard.string(forKey: "play") {
-                input = value
-                play(value)
-            }
+            // Debug/test hook: `-play <id or URL>` launch argument (simctl/devicectl launch). Once per launch.
+            guard !didAutoplay, let value = UserDefaults.standard.string(forKey: "play") else { return }
+            didAutoplay = true
+            input = value
+            play(value)
         }
     }
 

@@ -36,14 +36,17 @@ struct ResolverNetworkTests {
         #expect(playable >= 4, "only \(playable) of \(Self.cases.count) playable")
     }
 
-    @Test func `age restricted video fails with readable error`() async throws {
-        let id = try #require(VideoID("HtVdAasjOgU"))
+    @Test func `nonexistent video is reported as unavailable, not as an extraction failure`() async throws {
+        let id = try #require(VideoID("aaaaaaaaaaa"))
         do {
             let stream = try await YouTubeKitResolver().resolve(id)
-            await print("RESULT HtVdAasjOgU age-restricted: resolved \(stream.summary), HTTP \(Self.mediaStatus(stream))")
+            Issue.record("unexpectedly resolved \(stream.summary)")
         } catch {
-            print("RESULT HtVdAasjOgU age-restricted: \(error.message)")
-            #expect(!error.message.isEmpty)
+            print("RESULT aaaaaaaaaaa nonexistent: \(error.message)")
+            guard case .unavailable = error else {
+                Issue.record("expected .unavailable, got \(error)")
+                return
+            }
         }
     }
 
