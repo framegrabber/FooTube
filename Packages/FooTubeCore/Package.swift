@@ -11,16 +11,20 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/alexeichhorn/YouTubeKit", exact: "0.4.9"),
+        .package(path: "../InnerTubeKit"),
     ],
     targets: [
         .target(
             name: "FooTubeCore",
-            dependencies: [.product(name: "YouTubeKit", package: "YouTubeKit")],
+            dependencies: [
+                .product(name: "YouTubeKit", package: "YouTubeKit"),
+                .product(name: "InnerTubeKit", package: "InnerTubeKit"),
+            ],
             swiftSettings: strict,
         ),
         .testTarget(
             name: "FooTubeCoreTests",
-            dependencies: ["FooTubeCore"],
+            dependencies: ["FooTubeCore", .product(name: "InnerTubeKit", package: "InnerTubeKit")],
             resources: [.copy("Fixtures")],
             swiftSettings: strict,
         ),
