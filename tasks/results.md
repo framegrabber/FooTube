@@ -33,3 +33,18 @@ Launched with `scripts/run-sim.sh -play <id>`; values from the debug diagnostics
 
 - The filtered master now lists the best ≤ 720p variant first (AVPlayer starts with the first variant); before, playback began at 240p.
 - Not yet verified: Siri Remote seek/pause and Menu-to-exit (no remote input available in the Simulator from the command line), and anything on the Apple TV HD.
+
+## 2026-10-19 — T12–T15 in the `Apple TV` Simulator
+
+| Feature | Check | Result |
+|---|---|---|
+| SponsorBlock auto-skip | `zergV5YUDjk` (sponsor 51.2–102.2 s) | log `skipping sponsor 51.179-102.219` at ~51.7 s; "Skipped sponsor" notice shown |
+| SponsorBlock skip button | `e2_q_fE2uQY` (intro 0–14.4 s) | "Skip Intro" button appears bottom-right once the transport bar hides (AVPlayerViewController `contextualActions`) |
+| Search | `-search "blender open movie"` | 4-column grid with thumbnails, durations, channel/views/age; page 2 via continuation (network test) |
+| Channel page | `-channel UCSMOQeBJ2RAnuFungnQOxLg` | avatar, name, "1.25M subscribers", uploads grid; page 2 via continuation (network test) |
+| Subscriptions | `-subscribe <Blender>,<Rick Astley>`, then relaunch without it | both channels still listed (SwiftData persisted) |
+| Feed | Subscriptions tab with 2 channels | "Latest — Updated now", 60 videos newest first ("5 days ago", "2 weeks ago", …) |
+
+Not verifiable without a remote (Simulator has no CLI remote input): focus movement, pressing Skip Intro, Subscribe/Unsubscribe button, long-press context menu "Open channel", Menu to exit the player, seeking.
+
+Known gaps: made-for-kids videos fail (YouTubeKit returns no streams); some videos fail extraction (`p4aN7HXGlRk`, `V42hzL11Kpk`: `extractError` from YouTubeKit).

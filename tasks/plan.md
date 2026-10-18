@@ -3,6 +3,9 @@
 ## Overview
 A sideloaded tvOS app for an **Apple TV HD (A8, H.264-only, 1080p, tvOS 26)** that resolves YouTube streams on-device and plays them natively, so no ads are ever requested. Source of truth: `SPEC.md` (what), `CONSTRAINTS.md` (quality bar), this file (how/order), `tasks/todo.md` (tasks). Build order is risk-first: prove extraction on the Mac, minimal playback in the Simulator, then on the Apple TV, then 1080p, discovery, SponsorBlock, subscriptions.
 
+## Status (2026-10-19)
+All device-independent tasks (T1–T4, T9–T15) are done and verified in the `Apple TV` Simulator; see `tasks/results.md`. Phases 3–5 were built before the Checkpoint B human review because the owner asked to "go as far as possible" overnight. Open: T5 (pair + run on the Apple TV HD), T6 (1080p on device), and the device parts of Checkpoints B–D; T7/T8 only if T6 fails.
+
 ## Architecture Decisions
 - **Thin app, fat core.** `FooTube` app target (SwiftUI, tvOS 18+) holds UI only. Logic lives in local package `Packages/FooTubeCore`, tested with `swift test` on the Mac. The app target links only FooTubeCore.
 - **Generated project.** `project.yml` + XcodeGen; `FooTube.xcodeproj` is gitignored. `xcode-build-server` provides sourcekit-lsp support.
@@ -51,15 +54,15 @@ Phases 2, 3, 4 are independent after T5.
 Details in `tasks/todo.md`.
 
 ### Phase 0: Foundation
-- [ ] T1: Project scaffold and tooling
-- [ ] T2: Stream extraction spike in FooTubeCore
+- [x] T1: Project scaffold and tooling
+- [x] T2: Stream extraction spike in FooTubeCore
 
 ### Checkpoint A: Extraction viable
-- [ ] ≥4 of 5 non-restricted test IDs resolve to a playable muxed `avc1` stream from this Mac; otherwise stop and re-plan with the human
+- [x] ≥4 of 5 non-restricted test IDs resolve to playable media (filtered HLS; see results.md) from this Mac; otherwise stop and re-plan with the human
 
 ### Phase 1: MVP playback
-- [ ] T3: Play a video by ID with AVPlayer
-- [ ] T4: Test-video list with per-video diagnostics
+- [x] T3: Play a video by ID with AVPlayer
+- [x] T4: Test-video list with per-video diagnostics
 - [ ] T5: Deploy and run on Apple TV HD
 
 ### Checkpoint B: MVP on device (human review)
@@ -73,19 +76,19 @@ Details in `tasks/todo.md`.
 ### Checkpoint C: SPEC success criterion 2 on device
 
 ### Phase 3: Discovery
-- [ ] T9: Vendor b5i/YouTubeKit as InnerTubeKit
-- [ ] T10: Search screen
-- [ ] T11: Channel page
+- [x] T9: Vendor b5i/YouTubeKit as InnerTubeKit
+- [x] T10: Search screen
+- [x] T11: Channel page
 
 ### Checkpoint D: SPEC success criterion 3 on device
 
 ### Phase 4: SponsorBlock
-- [ ] T12: SponsorBlock client in FooTubeCore
-- [ ] T13: Auto-skip `sponsor`, skip button for other categories
+- [x] T12: SponsorBlock client in FooTubeCore
+- [x] T13: Auto-skip `sponsor`, skip button for other categories
 
 ### Phase 5: Subscriptions
-- [ ] T14: Local subscriptions store
-- [ ] T15: Subscriptions feed
+- [x] T14: Local subscriptions store
+- [x] T15: Subscriptions feed
 
 ### Checkpoint: Complete
 - [ ] SPEC success criteria 1–5 met on the Apple TV HD

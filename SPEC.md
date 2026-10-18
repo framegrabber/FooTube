@@ -63,19 +63,24 @@ SPEC.md, CONSTRAINTS.md, AGENTS.md
 SwiftFormat defaults; Swift 6 strict concurrency; value types and `async/await`; no singletons; dependencies injected via initializers; errors are typed enums with a user-readable message.
 
 ```swift
-public struct ResolvedStream: Sendable, Equatable {
+public struct ResolvedStream: Hashable, Sendable {
+    public enum Kind: Hashable, Sendable {
+        case hls(playlist: String, variantCount: Int, maxHeight: Int)
+        case muxed(itag: Int, height: Int)
+    }
+
+    public let videoID: VideoID
     public let url: URL
-    public let height: Int
-    public let isMuxed: Bool
-    public let sourceClient: String
+    public let kind: Kind
 }
 
 public protocol StreamResolver: Sendable {
-    func resolve(videoID: VideoID) async throws(ResolveError) -> ResolvedStream
+    func resolve(_ videoID: VideoID) async throws(ResolveError) -> ResolvedStream
 }
 
-public enum ResolveError: Error, Equatable {
-    case noPlayableStream(videoID: VideoID)
+public enum ResolveError: Error, Hashable, Sendable {
+    case noPlayableStream(detail: String)
+    case unavailable(reason: String)
     case extractionFailed(reason: String)
 }
 ```
