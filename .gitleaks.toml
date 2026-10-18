@@ -1,0 +1,11 @@
+# Scan our sources only; build outputs and SwiftPM checkouts are not source (see CONSTRAINTS.md).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Build outputs and dependency checkouts"
+paths = [
+  '''(^|/)\.build/''',
+  '''(^|/)build/''',
+  '''(^|/)DerivedData/''',
+]

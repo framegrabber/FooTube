@@ -20,7 +20,7 @@ Checked by `node scripts/floor-guard.mjs` on the diff against `main` (or `origin
 |-----------|------|-----------|---------|
 | Floor | Zero findings | `node scripts/floor-guard.mjs` | every edit (fast), task end |
 | Format | Zero diffs from `.swiftformat` | `swiftformat --lint .` | every edit (fast), task end |
-| Secrets | Zero findings, redacted output | `gitleaks dir --redact --no-banner .` | every edit (fast), task end |
+| Secrets | Zero findings in our sources, redacted output (`.gitleaks.toml` excludes only build outputs and SwiftPM checkouts) | `gitleaks dir --redact --no-banner .` | every edit (fast), task end |
 | Warnings: core | Zero compiler warnings in our targets (Swift 6 language mode, warnings are errors via `Package.swift` settings) | `swift build --package-path Packages/FooTubeCore` | task end |
 | Tests: core | All offline tests pass | `swift test --package-path Packages/FooTubeCore` | task end |
 | Warnings: app | Zero compiler warnings in the app target (`SWIFT_TREAT_WARNINGS_AS_ERRORS: YES`, `SWIFT_VERSION: 6`) | `xcodebuild … -destination 'platform=tvOS Simulator,name=Apple TV' build` | task end |
