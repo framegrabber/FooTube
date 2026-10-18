@@ -1,11 +1,6 @@
 # FooTube Task List
 
-Commands referenced below (canonical copies will live in `AGENTS.md` after T1):
-- Core tests: `swift test --package-path Packages/FooTubeCore`
-- Network tests: `FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore`
-- Generate project: `xcodegen generate`
-- Simulator build: `xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)' build | xcbeautify`
-- Screenshot: `xcrun simctl io booted screenshot <path>`
+Every task's verification includes `scripts/check.sh task` (see CONSTRAINTS.md) plus the task-specific checks below. Commands are in SPEC.md → Commands; Simulator device is `Apple TV` (1080p, closest to Apple TV HD).
 
 ---
 
@@ -13,59 +8,48 @@ Commands referenced below (canonical copies will live in `AGENTS.md` after T1):
 
 ## Task 1: Project scaffold and tooling
 
-**Description:** Create the repo structure: XcodeGen `project.yml` for a tvOS 18 SwiftUI app `FooTube` (bundle `com.felixrothballer.FooTube`, team `X94768F5PD`, automatic signing), a local Swift package `Packages/FooTubeCore` (library + test target), `.gitignore` (xcodeproj, DerivedData, build, buildServer.json, .DS_Store), and `AGENTS.md` with build/test/run commands, layout, and conventions. Configure `xcode-build-server` for sourcekit-lsp. App shows a placeholder screen.
+**Description:** XcodeGen `project.yml` for a tvOS 18 SwiftUI app `FooTube` (bundle `com.felixrothballer.FooTube`, team `X94768F5PD`, automatic signing, `SWIFT_VERSION: 6`, `SWIFT_TREAT_WARNINGS_AS_ERRORS: YES`); local package `Packages/FooTubeCore` (library + Swift Testing target, Swift 6 mode, warnings as errors for our targets only — verify the SwiftPM 6.2 setting against docs); `AGENTS.md` (commands, layout, conventions, and the line "Read CONSTRAINTS.md before writing code. Do not weaken it to make a change pass."); `xcode-build-server` config. App shows a placeholder screen. `.gitignore`, `.swiftformat`, `scripts/check.sh` already exist.
 
 **Acceptance criteria:**
-- [ ] `xcodegen generate` produces a project that builds for the tvOS Simulator
-- [ ] App launches in the Simulator and shows the placeholder screen
-- [ ] LSP resolves a symbol from FooTubeCore inside the app target
+- [ ] App builds and launches in the `Apple TV` Simulator showing the placeholder
+- [ ] An introduced warning in FooTubeCore or the app fails the build (then removed)
+- [ ] LSP resolves a FooTubeCore symbol from app code
 
 **Verification:**
-- [ ] Tests pass: `swift test --package-path Packages/FooTubeCore`
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: Simulator screenshot shows placeholder; `lsp definition` on a FooTubeCore symbol from app code succeeds
+- [ ] `scripts/check.sh task` exits 0 with no SKIP lines
+- [ ] Manual check: Simulator screenshot; `lsp definition` succeeds
 
 **Dependencies:** None
 
-**Files likely touched:**
-- `project.yml`, `.gitignore`, `AGENTS.md`
-- `App/FooTubeApp.swift`
-- `Packages/FooTubeCore/Package.swift`, `Packages/FooTubeCore/Sources/FooTubeCore/*.swift`, `Packages/FooTubeCore/Tests/FooTubeCoreTests/*.swift`
+**Files likely touched:** `project.yml`, `AGENTS.md`, `App/FooTubeApp.swift`, `Packages/FooTubeCore/Package.swift`, `Packages/FooTubeCore/Sources/FooTubeCore/FooTubeCore.swift`, `Packages/FooTubeCore/Tests/FooTubeCoreTests/FooTubeCoreTests.swift`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** incremental-implementation, source-driven-development
 
 ---
 
 ## Task 2: Stream extraction spike in FooTubeCore
 
-**Description:** Add alexeichhorn/YouTubeKit to FooTubeCore. Define `StreamResolver` (video ID → `ResolvedStream` with URL, resolution, container, source client, isMuxed) and a `YouTubeKitResolver` that picks the best natively playable muxed stream. Add an opt-in network test over 5 fixed IDs (normal, label music video, kids, long, livestream). Cross-check the same IDs with `yt-dlp --extractor-args "youtube:player_client=android_vr" -F`. This is the fail-fast gate.
+**Description:** Add alexeichhorn/YouTubeKit (local extraction only). Define `VideoID`, `ResolvedStream`, `StreamResolver`, `ResolveError` (SPEC code style) and `YouTubeKitResolver`, which selects the best muxed stream with `avc1` video ≤ 1080p and AAC audio. Offline tests over fixture stream lists for the selection rules; opt-in network test over 5 fixed IDs (normal, label music video, kids, >1 h, livestream). Cross-check with yt-dlp `android_vr`.
 
 **Acceptance criteria:**
-- [ ] ≥4 of 5 non-restricted IDs resolve to a URL whose first bytes download with HTTP 200/206
-- [ ] Resolution and failure reasons per ID are printed by the test
-- [ ] Resolver selection logic is covered by an offline unit test using fixture stream lists
+- [ ] Selection never returns VP9/AV1/Opus-only or > 1080p streams (offline tests)
+- [ ] ≥4 of 5 non-restricted IDs resolve to a URL whose first bytes return HTTP 200/206
+- [ ] Per-ID resolution/failure reason recorded in `tasks/results.md` next to yt-dlp output
 
 **Verification:**
-- [ ] Tests pass: `swift test --package-path Packages/FooTubeCore` (offline) and with `FOOTUBE_NETWORK_TESTS=1`
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: results table recorded in `tasks/results.md`, compared with yt-dlp output
+- [ ] `scripts/check.sh task`; `FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore`
 
 **Dependencies:** Task 1
 
-**Files likely touched:**
-- `Packages/FooTubeCore/Package.swift`
-- `Packages/FooTubeCore/Sources/FooTubeCore/StreamResolver.swift`
-- `Packages/FooTubeCore/Sources/FooTubeCore/YouTubeKitResolver.swift`
-- `Packages/FooTubeCore/Tests/FooTubeCoreTests/StreamResolverTests.swift`
-- `tasks/results.md`
+**Files likely touched:** `Packages/FooTubeCore/Package.swift`, `Sources/FooTubeCore/{VideoID,StreamResolver,YouTubeKitResolver}.swift`, `Tests/FooTubeCoreTests/StreamSelectionTests.swift`, `tasks/results.md`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** test-driven-development, api-and-interface-design, source-driven-development, doubt-driven-development
 
 ---
 
 ## Checkpoint A: Extraction viable
-- [ ] Offline and network tests pass
-- [ ] ≥4/5 IDs resolve; otherwise stop and re-plan (remote fallback / Yattee Server) with the human
+- [ ] Task 2 criteria met; otherwise stop and re-plan with the human
+- [ ] code-review-and-quality on T1–T2; commit and merge to `main`
 
 ---
 
@@ -73,153 +57,132 @@ Commands referenced below (canonical copies will live in `AGENTS.md` after T1):
 
 ## Task 3: Play a video by ID with AVPlayer
 
-**Description:** A single screen with a text field (video ID or YouTube URL, parsed in FooTubeCore) and a Play button. Resolves via `StreamResolver` and presents `AVPlayerViewController`. Loading and error states visible; errors include source client and reason.
+**Description:** Screen with a text field (ID or URL: `watch?v=`, `youtu.be/`, `shorts/`, `live/`; parsed in FooTubeCore) and Play. Resolves via `StreamResolver`, presents `AVPlayerViewController`. Loading and error states; errors show source client and reason. Check for playback 403s (headers).
 
 **Acceptance criteria:**
-- [ ] Entering a known-good ID plays video with audio in the Simulator
-- [ ] Full URLs (`watch?v=`, `youtu.be/`, `shorts/`) and bare IDs are accepted
-- [ ] A failing ID shows an error message instead of a blank player
+- [ ] Known-good ID plays with audio in the Simulator, no ad
+- [ ] All listed URL forms and bare IDs parse (offline tests); invalid input is rejected with a message
+- [ ] Failing ID shows an error, not a blank player
 
 **Verification:**
-- [ ] Tests pass: core tests incl. URL/ID parsing cases
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: two Simulator screenshots a few seconds apart show different video frames; no ad shown
+- [ ] `scripts/check.sh task`
+- [ ] Manual check: two screenshots seconds apart show different frames
 
 **Dependencies:** Task 2
 
-**Files likely touched:**
-- `App/PlayByIDView.swift`, `App/PlayerView.swift`
-- `Packages/FooTubeCore/Sources/FooTubeCore/VideoID.swift`
-- `Packages/FooTubeCore/Tests/FooTubeCoreTests/VideoIDTests.swift`
+**Files likely touched:** `App/PlayByIDView.swift`, `App/PlayerView.swift`, `Sources/FooTubeCore/VideoID.swift`, `Tests/FooTubeCoreTests/VideoIDTests.swift`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** frontend-ui-engineering, test-driven-development
 
 ---
 
 ## Task 4: Test-video list with per-video diagnostics
 
-**Description:** Home screen lists the 7 MVP test cases (normal, music video, age-restricted, kids, livestream, >1h, Short) plus the free-text entry. Each row plays the video; a small overlay in the player shows source client, resolution, container, and time to first frame.
+**Description:** Home lists the 7 MVP cases (normal, music video, age-restricted, kids, livestream, > 1 h, Short) plus free-text entry. Player overlay shows source client, resolution, codec and time to first frame; same values logged via `os.Logger`.
 
 **Acceptance criteria:**
-- [ ] All 7 entries are selectable with the Siri Remote and start playback or show an error
-- [ ] Overlay shows client, resolution, and time-to-first-frame for playing videos
+- [ ] All 7 entries reachable with the remote; each plays or shows an error
+- [ ] Overlay and log show client, resolution, codec, time to first frame
 
 **Verification:**
-- [ ] Tests pass: core tests
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: screenshot of the list and of the overlay during playback
+- [ ] `scripts/check.sh task`
+- [ ] Manual check: screenshots of list and overlay; log stream shows the entry
 
 **Dependencies:** Task 3
 
-**Files likely touched:**
-- `App/HomeView.swift`, `App/DiagnosticsOverlay.swift`
-- `Packages/FooTubeCore/Sources/FooTubeCore/TestVideos.swift`
+**Files likely touched:** `App/HomeView.swift`, `App/DiagnosticsOverlay.swift`, `Sources/FooTubeCore/TestVideos.swift`
 
-**Estimated scope:** S
+**Estimated scope:** S · **Skills:** observability-and-instrumentation, frontend-ui-engineering
 
 ---
 
-## Task 5: Deploy and run on Apple TV
+## Task 5: Deploy and run on Apple TV HD
 
-**Description:** Human pairs the Apple TV once. Build for the device, install and launch via `xcrun devicectl`, add the device commands to AGENTS.md, and run the test list on the TV. Record results.
+**Description:** Human pairs the Apple TV once. Device build, install and launch via `xcrun devicectl`; device commands added to AGENTS.md. Run the test list on the TV; record results.
 
 **Acceptance criteria:**
-- [ ] App installs and launches on the Apple TV from the command line
-- [ ] Playback starts in < ~3 s, seek and pause/resume work with the Siri Remote, no ads
-- [ ] ≥4 of 5 non-restricted cases play; the same video still plays 24 h later
+- [ ] Installs and launches on the Apple TV HD from the command line
+- [ ] SPEC success criterion 1 (start < 3 s, seek/pause with remote, no ads, ≥4/5, still plays after 24 h)
 
 **Verification:**
-- [ ] Build succeeds: device build (`-destination 'platform=tvOS,id=<udid>'`)
-- [ ] Manual check: human confirms on TV; results appended to `tasks/results.md`
+- [ ] Device build succeeds; human confirms on TV; results in `tasks/results.md`
 
 **Dependencies:** Task 4, human pairing
 
-**Files likely touched:**
-- `AGENTS.md`, `tasks/results.md`
+**Files likely touched:** `AGENTS.md`, `tasks/results.md`
 
-**Estimated scope:** S
+**Estimated scope:** S · **Skills:** shipping-and-launch
 
 ---
 
 ## Checkpoint B: MVP on device
-- [ ] Task 5 criteria met
-- [ ] Review with human before Phase 2–4 (answer open questions in plan.md)
+- [ ] Task 5 criteria met; code-review-and-quality + code-simplification on Phase 1
+- [ ] Human review before Phases 2–4
 
 ---
 
-## Phase 2: Quality (MPVKit)
+## Phase 2: 1080p
 
-## Task 6: MPVKit render spike on tvOS
+## Task 6: Spike — combine separate video + audio streams
 
-**Description:** Add MPVKit and a minimal `MPVPlayerView` (UIViewRepresentable) that renders a single muxed stream URL on tvOS. Use Yattee 2's MPVKit integration as reference. Isolated from the main player path.
+**Description:** With a 1080p `avc1` video-only URL and an AAC audio-only URL from the resolver, try in order: (a) `AVMutableComposition` from two remote `AVURLAsset`s in `AVPlayer`; (b) a locally served HLS playlist with `EXT-X-MAP`/`EXT-X-BYTERANGE` over the fMP4 files; (c) MPVKit — only after the human approves the dependency. Stop at the first that plays with A/V sync after seeking on the Apple TV HD. Record the outcome as an ADR.
 
 **Acceptance criteria:**
-- [ ] A muxed stream renders with audio via mpv in the Simulator and on the Apple TV
-- [ ] No crash when opening/closing the player 5 times in a row
+- [ ] One approach plays 1080p with audio in sync after a seek, on the device
+- [ ] ADR in `docs/adr/0001-1080p-playback.md` with evidence for each approach tried
 
 **Verification:**
-- [ ] Build succeeds: Simulator and device builds
-- [ ] Manual check: screenshots show moving frames; human confirms on TV
+- [ ] `scripts/check.sh task`; human confirms on TV
 
 **Dependencies:** Task 5
 
-**Files likely touched:**
-- `project.yml` or `Packages/FooTubeCore/Package.swift` (MPVKit dependency)
-- `App/MPV/MPVPlayerView.swift`, `App/MPV/MPVController.swift`
+**Files likely touched:** `App/Spike/AdaptivePlaybackSpike.swift`, `docs/adr/0001-1080p-playback.md`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** source-driven-development, doubt-driven-development, documentation-and-adrs
 
 ---
 
-## Task 7: Play separate video-only + audio-only streams
+## Task 7: 1080p adaptive playback via the chosen engine
 
-**Description:** Extend the resolver to return an adaptive pair (best video-only within device capability + best audio-only). Introduce a `PlayerEngine` abstraction; the mpv engine plays the video URL with the audio URL as an external audio track.
+**Description:** Resolver returns an adaptive pair (best `avc1` ≤ 1080p video-only + AAC audio-only) alongside the muxed fallback. `PlayerEngine` abstraction; the T6 approach becomes the default engine; spike code removed.
 
 **Acceptance criteria:**
-- [ ] A 1080p video plays at 1080p with audio in sync on the Apple TV
-- [ ] Resolver pair selection is covered by offline fixture tests (codec/resolution caps)
+- [ ] SPEC success criterion 2 on the Apple TV HD
+- [ ] Pair selection covered by offline fixture tests
 
 **Verification:**
-- [ ] Tests pass: core tests
-- [ ] Build succeeds: Simulator and device builds
-- [ ] Manual check: diagnostics overlay shows 1080p; human confirms A/V sync after a seek
+- [ ] `scripts/check.sh task`; overlay shows 1080p on device; human confirms sync after seek
 
 **Dependencies:** Task 6
 
-**Files likely touched:**
-- `Packages/FooTubeCore/Sources/FooTubeCore/StreamResolver.swift`, `YouTubeKitResolver.swift`, `PlayerEngine.swift`
-- `App/MPV/MPVController.swift`
-- `Packages/FooTubeCore/Tests/FooTubeCoreTests/StreamResolverTests.swift`
+**Files likely touched:** `Sources/FooTubeCore/{StreamResolver,YouTubeKitResolver,PlayerEngine}.swift`, `App/PlayerView.swift`, `Tests/FooTubeCoreTests/StreamSelectionTests.swift`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** api-and-interface-design, test-driven-development, performance-optimization
 
 ---
 
 ## Task 8: Siri Remote controls and engine fallback
 
-**Description:** Custom transport controls for the mpv player (play/pause, scrub, ±10 s, menu to exit) and automatic fallback to the AVPlayer engine with a muxed stream if mpv fails to start.
+**Description:** If the chosen engine lacks system transport controls (e.g. MPVKit), add play/pause, scrub, ±10 s, Menu to exit for the 1st-gen Siri Remote touch surface. If the adaptive engine fails to start, fall back to muxed AVPlayer playback automatically.
 
 **Acceptance criteria:**
-- [ ] Play/pause, scrub and skip work with the Siri Remote on the mpv engine
-- [ ] Forcing an mpv failure falls back to AVPlayer and playback continues
+- [ ] Play/pause, scrub, skip work with the remote on the default engine
+- [ ] A forced adaptive failure falls back to muxed playback, logged
 
 **Verification:**
-- [ ] Build succeeds: Simulator and device builds
-- [ ] Manual check: human exercises controls on TV; log shows fallback path
+- [ ] `scripts/check.sh task`; human exercises controls on TV; log shows fallback
 
 **Dependencies:** Task 7
 
-**Files likely touched:**
-- `App/MPV/MPVControlsView.swift`, `App/PlayerView.swift`
-- `Packages/FooTubeCore/Sources/FooTubeCore/PlayerEngine.swift`
+**Files likely touched:** `App/PlayerView.swift`, `App/PlayerControls.swift`, `Sources/FooTubeCore/PlayerEngine.swift`
 
-**Estimated scope:** M
+**Estimated scope:** M (S if AVPlayer UI is kept) · **Skills:** frontend-ui-engineering, debugging-and-error-recovery
 
 ---
 
-## Checkpoint C: 1080p playback on device
-- [ ] Test list plays via mpv at ≥1080p where available; fallback works
-- [ ] Review with human
+## Checkpoint C: 1080p on device
+- [ ] SPEC criterion 2; performance-optimization pass on A8 (CPU, memory, dropped frames)
+- [ ] code-review-and-quality; human review
 
 ---
 
@@ -227,76 +190,65 @@ Commands referenced below (canonical copies will live in `AGENTS.md` after T1):
 
 ## Task 9: Vendor b5i/YouTubeKit as InnerTubeKit
 
-**Description:** Copy b5i/YouTubeKit (MIT, keep LICENSE and upstream commit hash) into `Packages/InnerTubeKit` with package/product/target renamed to `InnerTubeKit`. Depend on it from FooTubeCore alongside alexeichhorn/YouTubeKit.
+**Description:** Copy b5i/YouTubeKit (MIT; keep LICENSE, record upstream commit) into `Packages/InnerTubeKit`, renaming package/product/target. FooTubeCore depends on it alongside alexeichhorn/YouTubeKit.
 
 **Acceptance criteria:**
-- [ ] FooTubeCore builds with both packages; no identity or module clashes
-- [ ] A network test performs one `SearchResponse` request successfully
+- [ ] FooTubeCore builds with both; no identity/module clash
+- [ ] Network test performs one search request successfully
 
 **Verification:**
-- [ ] Tests pass: core tests (offline + network)
-- [ ] Build succeeds: Simulator build command
+- [ ] `scripts/check.sh task` (InnerTubeKit excluded from format; warnings-as-errors applies to our targets only)
 
 **Dependencies:** Task 5
 
-**Files likely touched:**
-- `Packages/InnerTubeKit/**` (vendored), `Packages/FooTubeCore/Package.swift`
-- `Packages/FooTubeCore/Tests/FooTubeCoreTests/CatalogTests.swift`
+**Files likely touched:** `Packages/InnerTubeKit/**`, `Packages/FooTubeCore/Package.swift`, `Tests/FooTubeCoreTests/CatalogTests.swift`, `docs/adr/0002-vendor-innertubekit.md`
 
-**Estimated scope:** S (vendored code excluded)
+**Estimated scope:** S · **Skills:** doubt-driven-development, documentation-and-adrs
 
 ---
 
 ## Task 10: Search screen
 
-**Description:** `CatalogService` in FooTubeCore wraps InnerTubeKit search (+ continuation). tvOS search screen (system keyboard / `.searchable`) shows a thumbnail grid; selecting a result plays it through the current player engine.
+**Description:** `CatalogService` wraps InnerTubeKit search with continuation. tvOS search screen with a lazy thumbnail grid (downsampled images); selecting a result plays it.
 
 **Acceptance criteria:**
-- [ ] Typing a query shows results with thumbnails, title, channel, duration
-- [ ] Scrolling to the end loads the next page
+- [ ] Query shows results with thumbnail, title, channel, duration
+- [ ] Reaching the end loads the next page
 - [ ] Selecting a result plays it
 
 **Verification:**
-- [ ] Tests pass: core tests incl. decoding from a fixture search response
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: screenshots of results and playback from a result
+- [ ] `scripts/check.sh task` incl. fixture decoding tests; screenshots
 
 **Dependencies:** Task 9
 
-**Files likely touched:**
-- `Packages/FooTubeCore/Sources/FooTubeCore/CatalogService.swift`, `Models.swift`
-- `App/SearchView.swift`, `App/VideoCard.swift`
+**Files likely touched:** `Sources/FooTubeCore/{CatalogService,Models}.swift`, `App/SearchView.swift`, `App/VideoCard.swift`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** api-and-interface-design, frontend-ui-engineering
 
 ---
 
 ## Task 11: Channel page
 
-**Description:** From a search result or player, open the channel: header plus videos tab with continuation. Selecting a video plays it.
+**Description:** Open a channel from a result or the player: header plus uploads with paging; selecting a video plays it.
 
 **Acceptance criteria:**
-- [ ] Channel page lists the latest uploads with paging
+- [ ] Latest uploads listed with paging
 - [ ] Selecting a video plays it
 
 **Verification:**
-- [ ] Tests pass: core tests incl. fixture channel response
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: screenshot of a channel page
+- [ ] `scripts/check.sh task` incl. fixture channel test; screenshot
 
 **Dependencies:** Task 10
 
-**Files likely touched:**
-- `Packages/FooTubeCore/Sources/FooTubeCore/CatalogService.swift`
-- `App/ChannelView.swift`
+**Files likely touched:** `Sources/FooTubeCore/CatalogService.swift`, `App/ChannelView.swift`
 
-**Estimated scope:** S
+**Estimated scope:** S · **Skills:** frontend-ui-engineering
 
 ---
 
-## Checkpoint D: Search → play end-to-end on device
-- [ ] Search, channel, and playback work on the Apple TV
-- [ ] Review with human
+## Checkpoint D: Discovery on device
+- [ ] SPEC criterion 3 on the Apple TV HD; grid scrolling smooth on A8
+- [ ] code-review-and-quality; human review
 
 ---
 
@@ -304,44 +256,39 @@ Commands referenced below (canonical copies will live in `AGENTS.md` after T1):
 
 ## Task 12: SponsorBlock client in FooTubeCore
 
-**Description:** Client for `GET /api/skipSegments/:sha256HashPrefix` (4-char prefix of SHA-256 of the video ID, CryptoKit), filtering the response to the requested video and configured categories.
+**Description:** `GET https://sponsor.ajay.app/api/skipSegments/:prefix` with the first 4 hex chars of SHA-256(videoID) (CryptoKit); filter to the requested video; categories `sponsor` (auto-skip) and `selfpromo`, `interaction`, `intro`, `outro`, `preview`, `music_offtopic`, `filler` (button).
 
 **Acceptance criteria:**
-- [ ] Returns segments (start, end, category) for the requested video only
-- [ ] Network failure yields an empty list, never blocks playback
+- [ ] Returns segments (start, end, category, action) for the requested video only
+- [ ] Network failure or timeout yields an empty list and never blocks playback
 
 **Verification:**
-- [ ] Tests pass: offline fixture tests (hash prefix, filtering) + one network test
+- [ ] `scripts/check.sh task` (fixture tests for hashing/filtering) + one network test
 
 **Dependencies:** Task 5
 
-**Files likely touched:**
-- `Packages/FooTubeCore/Sources/FooTubeCore/SponsorBlock.swift`
-- `Packages/FooTubeCore/Tests/FooTubeCoreTests/SponsorBlockTests.swift`
+**Files likely touched:** `Sources/FooTubeCore/SponsorBlock.swift`, `Tests/FooTubeCoreTests/SponsorBlockTests.swift`
 
-**Estimated scope:** S
+**Estimated scope:** S · **Skills:** test-driven-development, source-driven-development
 
 ---
 
-## Task 13: Auto-skip segments during playback
+## Task 13: Auto-skip `sponsor`, skip button for other categories
 
-**Description:** Player observes time and skips configured segments, showing a brief "Skipped sponsor" notice. Works on the current `PlayerEngine`.
+**Description:** Player observes time: inside a `sponsor` segment it seeks past and shows a brief notice; inside any other category it shows a focusable "Skip <category>" button.
 
 **Acceptance criteria:**
-- [ ] Playback jumps over a known sponsor segment and shows the notice
-- [ ] Manual seek back into a segment is not immediately re-skipped
+- [ ] SPEC success criterion 4
+- [ ] Seeking back into a skipped segment does not immediately re-skip
 
 **Verification:**
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: log/screenshot of the skip on a known video
+- [ ] `scripts/check.sh task`; screenshot/log on a known video
 
-**Dependencies:** Task 12, Task 3 (or Task 8 if mpv is current)
+**Dependencies:** Task 12, Task 3 (or Task 7/8 if that engine is current)
 
-**Files likely touched:**
-- `App/PlayerView.swift`, `App/SkipNotice.swift`
-- `Packages/FooTubeCore/Sources/FooTubeCore/PlayerEngine.swift`
+**Files likely touched:** `App/PlayerView.swift`, `App/SkipControls.swift`, `Sources/FooTubeCore/SkipPolicy.swift`, `Tests/FooTubeCoreTests/SkipPolicyTests.swift`
 
-**Estimated scope:** S
+**Estimated scope:** S · **Skills:** test-driven-development, frontend-ui-engineering
 
 ---
 
@@ -349,51 +296,40 @@ Commands referenced below (canonical copies will live in `AGENTS.md` after T1):
 
 ## Task 14: Local subscriptions store
 
-**Description:** SwiftData model for subscribed channels; subscribe/unsubscribe button on the channel page; subscriptions list screen.
+**Description:** SwiftData model for subscribed channels; Subscribe/Unsubscribe on the channel page; subscriptions list screen.
 
 **Acceptance criteria:**
-- [ ] Subscribing persists across app relaunch
-- [ ] Unsubscribing removes the channel from the list
+- [ ] Subscribing persists across relaunch; unsubscribing removes it
 
 **Verification:**
-- [ ] Tests pass: store tests with an in-memory container
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: relaunch Simulator app; list persists
+- [ ] `scripts/check.sh task` (in-memory container tests); relaunch check in Simulator
 
 **Dependencies:** Task 11
 
-**Files likely touched:**
-- `Packages/FooTubeCore/Sources/FooTubeCore/SubscriptionStore.swift`
-- `App/ChannelView.swift`, `App/SubscriptionsView.swift`
+**Files likely touched:** `Sources/FooTubeCore/SubscriptionStore.swift`, `App/ChannelView.swift`, `App/SubscriptionsView.swift`, `Tests/FooTubeCoreTests/SubscriptionStoreTests.swift`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** source-driven-development, test-driven-development
 
 ---
 
 ## Task 15: Subscriptions feed
 
-**Description:** Aggregate the latest uploads of all subscribed channels (concurrent fetch, cached, refreshed on launch and on demand), newest first, as the default home section.
+**Description:** Aggregate latest uploads across subscriptions (bounded concurrent fetch, cached), newest first, as the default home section; cache shown instantly, refreshed on launch and on demand.
 
 **Acceptance criteria:**
-- [ ] Feed shows recent uploads across subscriptions sorted by date
-- [ ] Cached feed displays instantly on relaunch, then refreshes
+- [ ] SPEC success criterion 5
 
 **Verification:**
-- [ ] Tests pass: merge/sort/cache tests with fixtures
-- [ ] Build succeeds: Simulator build command
-- [ ] Manual check: screenshot of feed on device
+- [ ] `scripts/check.sh task` (merge/sort/cache tests); screenshot on device
 
 **Dependencies:** Task 14
 
-**Files likely touched:**
-- `Packages/FooTubeCore/Sources/FooTubeCore/FeedService.swift`
-- `App/HomeView.swift`
+**Files likely touched:** `Sources/FooTubeCore/FeedService.swift`, `App/HomeView.swift`, `Tests/FooTubeCoreTests/FeedServiceTests.swift`
 
-**Estimated scope:** M
+**Estimated scope:** M · **Skills:** performance-optimization, test-driven-development
 
 ---
 
 ## Checkpoint: Complete
-- [ ] All tests pass, builds clean
-- [ ] All flows verified on the Apple TV
-- [ ] Human sign-off
+- [ ] SPEC success criteria 1–5 on the Apple TV HD
+- [ ] code-review-and-quality, code-simplification; human sign-off
