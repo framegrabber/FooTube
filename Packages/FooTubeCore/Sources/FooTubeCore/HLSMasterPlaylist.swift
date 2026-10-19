@@ -17,6 +17,7 @@ public enum HLSMasterPlaylist {
     /// Keeps every non-variant line (header, `#EXT-X-MEDIA` renditions) and each
     /// `#EXT-X-STREAM-INF` + URI pair whose video codec is H.264 within the profile. The best
     /// variant at or below `startHeight` is listed first so playback starts sharp; ABR adapts from there.
+    /// Renditions get default flags for the original audio and no subtitles (`withPreferredDefaults`).
     /// Returns nil when no variant qualifies.
     public static func filtered(_ text: String, for profile: DecodeProfile) -> Filtered? {
         var otherLines: [Substring] = []
@@ -58,12 +59,157 @@ public enum HLSMasterPlaylist {
             variants.insert(variants.remove(at: start), at: 0)
         }
 
-        let lines = otherLines.filter { !$0.isEmpty } + variants.flatMap { [$0.info, $0.uri] }
+        let lines = withPreferredDefaults(otherLines.filter { !$0.isEmpty }) + variants.flatMap { [String($0.info), String($0.uri)] }
         return Filtered(
             text: lines.joined(separator: "\n") + "\n",
             variantCount: variants.count,
             maxHeight: variants.map(\.height).max() ?? 0,
         )
+    }
+
+    private static let mediaTag = "#EXT-X-MEDIA:"
+
+    /// Rewrites `DEFAULT`/`AUTOSELECT` of `#EXT-X-MEDIA` renditions:
+    /// - Audio groups that contain a rendition YouTube marks as original (`acont=original` in
+    ///   `YT-EXT-XTAGS`): that rendition becomes `DEFAULT=YES,AUTOSELECT=YES`, all others (AI or human
+    ///   dubs) `DEFAULT=NO,AUTOSELECT=NO`. YouTube marks every track `DEFAULT=NO,AUTOSELECT=YES`, so
+    ///   AVPlayer would pick the dub matching the system language. Groups without such a marker
+    ///   (single "Default" track) stay as they are.
+    /// - Subtitles and closed captions: `DEFAULT=NO,AUTOSELECT=NO`, so they stay off until chosen.
+    ///
+    /// `AUTOSELECT=NO` only excludes a rendition from automatic selection; it stays in the player's menus.
+    private static func withPreferredDefaults(_ lines: [Substring]) -> [String] {
+        let renditions: [AttributeList?] = lines.map { $0.hasPrefix(mediaTag) ? AttributeList($0.dropFirst(mediaTag.count)) : nil }
+        var originalByGroup: [Substring: Int] = [:]
+        for (index, entry) in renditions.enumerated() {
+            guard let rendition = entry, rendition["TYPE"] == "AUDIO", let group = rendition["GROUP-ID"],
+                  let tags = rendition["YT-EXT-XTAGS"], youTubeTags(tags)["acont"] == "original" else { continue }
+            if originalByGroup[group] == nil {
+                originalByGroup[group] = index
+            }
+        }
+
+        return lines.indices.map { index in
+            let line = lines[index]
+            guard var rendition = renditions[index] else { return String(line) }
+            switch rendition["TYPE"] {
+            case "AUDIO"?:
+                guard let group = rendition["GROUP-ID"], let original = originalByGroup[group] else { return String(line) }
+                rendition.setDefault(index == original)
+            case "SUBTITLES"?, "CLOSED-CAPTIONS"?:
+                rendition.setDefault(false)
+            default:
+                return String(line)
+            }
+            return mediaTag + rendition.text
+        }
+    }
+
+    /// Attribute list of a tag, split on commas outside quoted strings (YouTube URIs contain commas).
+    private struct AttributeList {
+        private var items: [Substring]
+
+        init(_ list: Substring) {
+            items = []
+            var start = list.startIndex
+            var quoted = false
+            for index in list.indices {
+                if list[index] == "\"" {
+                    quoted.toggle()
+                } else if list[index] == ",", !quoted {
+                    items.append(list[start ..< index])
+                    start = list.index(after: index)
+                }
+            }
+            items.append(list[start...])
+        }
+
+        /// Value with surrounding quotes removed.
+        subscript(name: String) -> Substring? {
+            guard let item = items.first(where: { $0.hasPrefix("\(name)=") }) else { return nil }
+            let value = item.dropFirst(name.count + 1)
+            guard value.count >= 2, value.hasPrefix("\""), value.hasSuffix("\"") else { return value }
+            return value.dropFirst().dropLast()
+        }
+
+        mutating func setDefault(_ isDefault: Bool) {
+            let value = isDefault ? "YES" : "NO"
+            set("DEFAULT", to: value)
+            set("AUTOSELECT", to: value)
+        }
+
+        private mutating func set(_ name: String, to value: String) {
+            let item = Substring("\(name)=\(value)")
+            if let index = items.firstIndex(where: { $0.hasPrefix("\(name)=") }) {
+                items[index] = item
+            } else {
+                items.append(item)
+            }
+        }
+
+        var text: String {
+            items.joined(separator: ",")
+        }
+    }
+
+    /// Decodes `YT-EXT-XTAGS`: base64url (unpadded) protobuf of repeated `{1: key, 2: value}` string
+    /// pairs, e.g. `acont=original`, `lang=en-US`. Malformed input yields no tags.
+    private static func youTubeTags(_ encoded: Substring) -> [String: String] {
+        var base64 = encoded.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        base64 += String(repeating: "=", count: (4 - base64.count % 4) % 4)
+        guard let data = Data(base64Encoded: base64), let entries = lengthDelimitedFields([UInt8](data)[...]) else { return [:] }
+        var tags: [String: String] = [:]
+        for (number, entry) in entries where number == 1 {
+            guard let fields = lengthDelimitedFields(entry),
+                  let key = fields.first(where: { $0.number == 1 }),
+                  let value = fields.first(where: { $0.number == 2 }) else { continue }
+            tags[String(decoding: key.bytes, as: UTF8.self)] = String(decoding: value.bytes, as: UTF8.self)
+        }
+        return tags
+    }
+
+    /// Length-delimited fields of a protobuf message (other wire types are skipped); nil if malformed.
+    private static func lengthDelimitedFields(_ bytes: ArraySlice<UInt8>) -> [(number: Int, bytes: ArraySlice<UInt8>)]? {
+        var fields: [(number: Int, bytes: ArraySlice<UInt8>)] = []
+        var index = bytes.startIndex
+        func varint() -> Int? {
+            var result = 0
+            var shift = 0
+            while index < bytes.endIndex, shift < 64 {
+                let byte = bytes[index]
+                index += 1
+                result |= Int(byte & 0x7F) << shift
+                if byte & 0x80 == 0 {
+                    return result
+                }
+                shift += 7
+            }
+            return nil
+        }
+        func skip(_ count: Int) -> Bool {
+            guard count >= 0, bytes.endIndex - index >= count else { return false }
+            index += count
+            return true
+        }
+        while index < bytes.endIndex {
+            guard let key = varint() else { return nil }
+            switch key & 0x7 {
+            case 0:
+                guard varint() != nil else { return nil }
+            case 1:
+                guard skip(8) else { return nil }
+            case 2:
+                guard let length = varint() else { return nil }
+                let start = index
+                guard skip(length) else { return nil }
+                fields.append((key >> 3, bytes[start ..< index]))
+            case 5:
+                guard skip(4) else { return nil }
+            default:
+                return nil
+            }
+        }
+        return fields
     }
 
     private static func decodableHeight(attributes line: Substring, profile: DecodeProfile) -> Int? {

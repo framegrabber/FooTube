@@ -1,13 +1,17 @@
 import FooTubeCore
 import SwiftUI
 
-/// YouTube search with paging; channels open in the same navigation stack.
+/// YouTube search with paging: matching channels in a row above the videos; channels open in the same
+/// navigation stack. A new `resetToken` (the Search tab was chosen again) starts over: query, results
+/// and opened channels are cleared, so the search keyboard is the only thing left to focus.
 struct SearchView: View {
     let catalog: any Catalog
+    var resetToken = 0
 
     @State private var query = ""
     @State private var searchedQuery: String?
     @State private var results: [VideoSummary] = []
+    @State private var channels: [ChannelSummary] = []
     @State private var next: PageCursor?
     @State private var isLoadingMore = false
     @State private var error: String?
@@ -17,12 +21,18 @@ struct SearchView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                if let error {
-                    Text(error).foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 48) {
+                    if let error {
+                        Text(error).foregroundStyle(.red)
+                    }
+                    if !channels.isEmpty {
+                        ChannelRow(channels: channels) { path.append($0.ref) }
+                    }
+                    VideoGrid(videos: results, onReachEnd: loadMore, onOpenChannel: { path.append($0) })
                 }
-                VideoGrid(videos: results, onReachEnd: loadMore, onOpenChannel: { path.append($0) })
-                    .padding(.horizontal, 80)
+                .padding(.horizontal, 80)
             }
+            .scrollClipDisabled() // focused cards scale past the scroll view's edges
             .searchable(text: $query, prompt: "Search YouTube")
             .task(id: query) {
                 // Debounce typing. An empty query keeps the last results; returning to this view
@@ -37,6 +47,7 @@ struct SearchView: View {
                 ChannelView(catalog: catalog, channel: channel)
             }
         }
+        .onChange(of: resetToken) { reset() }
         .onAppear {
             // Debug/test hooks: `-search <query>` and `-channel <channelID>` launch arguments, once per launch.
             guard !didApplyLaunchArguments else { return }
@@ -50,12 +61,25 @@ struct SearchView: View {
         }
     }
 
+    /// A running search or page load is discarded: `search` checks cancellation (the query changed)
+    /// and `loadMore` checks `searchedQuery`.
+    private func reset() {
+        query = ""
+        searchedQuery = nil
+        results = []
+        channels = []
+        next = nil
+        error = nil
+        path = []
+    }
+
     private func search(_ text: String) async {
         do throws(CatalogError) {
             let page = try await catalog.search(text)
             guard !Task.isCancelled else { return }
             searchedQuery = text
             results = [].appendingUnique(page.items)
+            channels = [].appendingUnique(page.channels)
             next = page.next
             error = nil
         } catch {
@@ -73,10 +97,64 @@ struct SearchView: View {
                 let page = try await catalog.moreSearchResults(cursor)
                 guard forQuery == searchedQuery else { return } // a new search started meanwhile
                 results = results.appendingUnique(page.items)
+                channels = channels.appendingUnique(page.channels)
                 next = page.next
             } catch {
                 self.error = error.message
             }
         }
+    }
+}
+
+/// Matching channels as round avatars in a horizontal row; selecting one opens it.
+private struct ChannelRow: View {
+    let channels: [ChannelSummary]
+    let onOpen: (ChannelSummary) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Channels").font(.headline)
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 48) {
+                    ForEach(channels) { channel in
+                        Button {
+                            onOpen(channel)
+                        } label: {
+                            ChannelTile(channel: channel)
+                        }
+                        .buttonStyle(CardButtonStyle())
+                    }
+                }
+                .padding(.vertical, 24) // room for the focused tile's scale, ring and shadow
+            }
+            .scrollClipDisabled()
+        }
+        .focusSection()
+    }
+}
+
+private struct ChannelTile: View {
+    let channel: ChannelSummary
+
+    var body: some View {
+        VStack(spacing: 16) {
+            AsyncImage(url: channel.avatar) { image in
+                image.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Color.gray.opacity(0.2)
+            }
+            .frame(width: 160, height: 160)
+            .cardFocusHighlight(Circle())
+            Text(channel.name)
+                .font(.callout)
+                .lineLimit(1)
+            if let detail = channel.subscriberCount ?? channel.handle {
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(width: 240)
     }
 }

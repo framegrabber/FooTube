@@ -23,11 +23,26 @@ public struct VideoSummary: Identifiable, Codable, Hashable, Sendable {
     public let thumbnail: URL?
 }
 
-public extension [VideoSummary] {
+public extension Array where Element: Identifiable {
     /// YouTube repeats some results across pages; SwiftUI lists need unique IDs.
-    func appendingUnique(_ more: [VideoSummary]) -> [VideoSummary] {
+    func appendingUnique(_ more: [Element]) -> [Element] {
         var seen = Set(map(\.id))
         return self + more.filter { seen.insert($0.id).inserted }
+    }
+}
+
+/// A channel as shown in search results.
+public struct ChannelSummary: Identifiable, Codable, Hashable, Sendable {
+    /// Channel ID (`UC…`).
+    public let id: String
+    public let name: String
+    public let handle: String?
+    public let subscriberCount: String?
+    public let videoCount: String?
+    public let avatar: URL?
+
+    public var ref: ChannelRef {
+        ChannelRef(id: id, name: name)
     }
 }
 
@@ -41,7 +56,15 @@ public struct PageCursor: Hashable, Sendable {
 
 public struct ResultsPage: Sendable {
     public let items: [VideoSummary]
+    /// Channels among search results; empty for channel uploads (and so the feed).
+    public let channels: [ChannelSummary]
     public let next: PageCursor?
+
+    init(items: [VideoSummary], channels: [ChannelSummary] = [], next: PageCursor?) {
+        self.items = items
+        self.channels = channels
+        self.next = next
+    }
 }
 
 public enum CatalogError: Error, Hashable, Sendable {
@@ -73,6 +96,7 @@ public protocol Catalog: Sendable {
 public struct InnerTubeCatalog: Catalog {
     /// Thumbnails are downscaled for the A8: the smallest one at least this wide is used.
     static let preferredThumbnailWidth = 480
+    static let preferredAvatarWidth = 240
 
     private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "catalog")
 
@@ -90,15 +114,17 @@ public struct InnerTubeCatalog: Catalog {
         do {
             let model = Self.model()
             let header = try await ChannelInfosResponse.sendThrowingRequest(youtubeModel: model, data: [.browseId: id])
-            let withVideos = try await header.getChannelContentThrowing(forType: .videos, youtubeModel: model)
-            let ref = ChannelRef(id: id, name: header.name ?? withVideos.name)
-            let videos = (withVideos.channelContentStore[.videos] as? ChannelInfosResponse.Videos)?.items ?? []
-            let token = withVideos.channelContentContinuationStore[.videos] ?? nil
+            // A channel without a "Videos" tab (only Shorts or live streams) has no uploads to list.
+            var uploads = ChannelVideosResponse()
+            if let params = header.requestParams[.videos] {
+                uploads = try await ChannelVideosResponse.sendThrowingRequest(youtubeModel: model, data: [.browseId: id, .params: params])
+            }
+            let ref = ChannelRef(id: id, name: header.name ?? uploads.name)
             return ChannelPage(
                 channel: ref,
-                avatar: Self.preferredThumbnail(header.avatarThumbnails, width: 240),
+                avatar: Self.preferredThumbnail(header.avatarThumbnails, width: Self.preferredAvatarWidth),
                 subscriberCount: header.subscriberCount,
-                videos: page(videos, token: token, visitorData: nil, channel: ref),
+                videos: Self.page(uploads.videos, token: uploads.continuation, visitorData: nil, channel: ref),
             )
         } catch {
             logger.error("channel \(id, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
@@ -108,9 +134,9 @@ public struct InnerTubeCatalog: Catalog {
 
     public func moreChannelVideos(_ cursor: PageCursor) async throws(CatalogError) -> ResultsPage {
         do {
-            let response = try await ChannelInfosResponse.ContentContinuation<ChannelInfosResponse.Videos>
+            let response = try await ChannelVideosResponse.Continuation
                 .sendThrowingRequest(youtubeModel: Self.model(), data: [.continuation: cursor.token])
-            return page(response.contents?.items ?? [], token: response.newContinuationToken, visitorData: nil, channel: cursor.channel)
+            return Self.page(response.videos, token: response.continuation, visitorData: nil, channel: cursor.channel)
         } catch {
             logger.error("channel continuation failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
@@ -120,7 +146,7 @@ public struct InnerTubeCatalog: Catalog {
     public func search(_ query: String) async throws(CatalogError) -> ResultsPage {
         do {
             let response = try await SearchResponse.sendThrowingRequest(youtubeModel: Self.model(), data: [.query: query])
-            return page(response.results, token: response.continuationToken, visitorData: response.visitorData)
+            return Self.page(response.results, token: response.continuationToken, visitorData: response.visitorData)
         } catch {
             logger.error("search failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
@@ -132,26 +158,30 @@ public struct InnerTubeCatalog: Catalog {
         data[.visitorData] = cursor.visitorData
         do {
             let response = try await SearchResponse.Continuation.sendThrowingRequest(youtubeModel: Self.model(), data: data)
-            return page(response.results, token: response.continuationToken, visitorData: cursor.visitorData)
+            return Self.page(response.results, token: response.continuationToken, visitorData: cursor.visitorData)
         } catch {
             logger.error("search continuation failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
         }
     }
 
-    private func page(
+    static func page(
         _ results: [any YTSearchResult],
         token: String?,
         visitorData: String?,
         channel: ChannelRef? = nil,
     ) -> ResultsPage {
-        let items = results.compactMap { ($0 as? YTVideo).flatMap { Self.summary($0, channel: channel) } }
-        return ResultsPage(items: items, next: token.map { PageCursor(token: $0, visitorData: visitorData, channel: channel) })
+        ResultsPage(
+            items: results.compactMap { ($0 as? YTVideo).flatMap { summary($0, channel: channel) } },
+            channels: [].appendingUnique(results.compactMap { ($0 as? YTChannel).flatMap { channelSummary($0) } }),
+            next: token.map { PageCursor(token: $0, visitorData: visitorData, channel: channel) },
+        )
     }
 
     /// `channel` fills in the channel when the result has none (channel tabs and their continuations).
+    /// Members-only videos are dropped: they don't play without a member's Google login.
     static func summary(_ video: YTVideo, channel: ChannelRef? = nil) -> VideoSummary? {
-        guard let id = VideoID(video.videoId) else { return nil }
+        guard video.memberOnly != true, let id = VideoID(video.videoId) else { return nil }
         return VideoSummary(
             id: id,
             title: video.title ?? "",
@@ -163,9 +193,97 @@ public struct InnerTubeCatalog: Catalog {
         )
     }
 
+    /// Channels without an ID or any name to show are dropped.
+    static func channelSummary(_ channel: YTChannel) -> ChannelSummary? {
+        guard !channel.channelId.isEmpty, let name = channel.name ?? channel.handle, !name.isEmpty else { return nil }
+        return ChannelSummary(
+            id: channel.channelId,
+            name: name,
+            handle: channel.handle,
+            subscriberCount: channel.subscriberCount,
+            videoCount: channel.videoCount,
+            avatar: preferredThumbnail(channel.thumbnails, width: preferredAvatarWidth),
+        )
+    }
+
     /// Smallest thumbnail at least `width` wide, else the largest available.
     static func preferredThumbnail(_ thumbnails: [YTThumbnail], width: Int) -> URL? {
         let byWidth = thumbnails.sorted { ($0.width ?? 0) < ($1.width ?? 0) }
         return (byWidth.first { ($0.width ?? 0) >= width } ?? byWidth.last)?.url
+    }
+}
+
+/// A channel's "Videos" tab, decoded by InnerTubeKit's `ChannelInfosResponse` plus the "Members only"
+/// badge: InnerTubeKit's lockup decoder (`YTVideo.decodeLockupJSON`, used for channel tabs) never sets
+/// `YTVideo.memberOnly`, so the badge is read from the raw lockups here.
+struct ChannelVideosResponse: YouTubeResponse {
+    static var headersType: HeaderTypes {
+        ChannelInfosResponse.headersType
+    }
+
+    static var parametersValidationList: ValidationList {
+        ChannelInfosResponse.parametersValidationList
+    }
+
+    var name: String?
+    var videos: [YTVideo] = []
+    var continuation: String?
+
+    static func decodeJSON(json: JSON) -> ChannelVideosResponse {
+        let channel = ChannelInfosResponse.decodeJSON(json: json)
+        let tab = channel.channelContentStore[.videos] as? ChannelInfosResponse.Videos
+        return ChannelVideosResponse(
+            name: channel.name,
+            videos: markingMembersOnly(tab?.items ?? [], in: json),
+            continuation: channel.channelContentContinuationStore[.videos] ?? nil,
+        )
+    }
+
+    /// A further page of the "Videos" tab.
+    struct Continuation: YouTubeResponse {
+        static var headersType: HeaderTypes {
+            ChannelInfosResponse.ContentContinuation<ChannelInfosResponse.Videos>.headersType
+        }
+
+        static var parametersValidationList: ValidationList {
+            ChannelInfosResponse.ContentContinuation<ChannelInfosResponse.Videos>.parametersValidationList
+        }
+
+        var videos: [YTVideo] = []
+        var continuation: String?
+
+        static func decodeJSON(json: JSON) -> Continuation {
+            let page = ChannelInfosResponse.Videos.decodeContinuation(json: json)
+            return Continuation(
+                videos: markingMembersOnly(page.contents?.items ?? [], in: json),
+                continuation: page.newContinuationToken,
+            )
+        }
+    }
+
+    private static func markingMembersOnly(_ results: [any YTSearchResult], in json: JSON) -> [YTVideo] {
+        let membersOnly = membersOnlyVideoIDs(in: json)
+        return results.compactMap { result in
+            guard var video = result as? YTVideo else { return nil }
+            if membersOnly.contains(video.videoId) {
+                video.memberOnly = true
+            }
+            return video
+        }
+    }
+
+    /// IDs of the lockups in a channel tab (first page or continuation) that carry a "Members only" badge.
+    private static func membersOnlyVideoIDs(in json: JSON) -> Set<String> {
+        let tabItems = json["contents", "twoColumnBrowseResultsRenderer", "tabs"].arrayValue
+            .flatMap { $0["tabRenderer", "content", "richGridRenderer", "contents"].arrayValue }
+        let continuationItems = json["onResponseReceivedActions"].arrayValue
+            .flatMap { $0["appendContinuationItemsAction", "continuationItems"].arrayValue }
+        let ids = (tabItems + continuationItems).compactMap { item -> String? in
+            let lockup = item["richItemRenderer", "content", "lockupViewModel"]
+            let rows = lockup["metadata", "lockupMetadataViewModel", "metadata", "contentMetadataViewModel", "metadataRows"].arrayValue
+            let badges = rows.flatMap { $0["badges"].arrayValue }
+            return badges.contains { $0["badgeViewModel", "badgeStyle"].string == "BADGE_MEMBERS_ONLY" } ? lockup["contentId"].string : nil
+        }
+        return Set(ids)
     }
 }

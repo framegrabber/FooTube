@@ -25,9 +25,11 @@ struct ChannelView: View {
             }
             .padding(80)
         }
+        .scrollClipDisabled() // the focused card's scale, ring and shadow reach past the edges
         .task(id: channel.id) { await load() }
     }
 
+    /// A full-width focus section, so pressing up from any first-row card lands on Subscribe.
     private var header: some View {
         HStack(spacing: 32) {
             AsyncImage(url: page?.avatar) { image in
@@ -35,22 +37,23 @@ struct ChannelView: View {
             } placeholder: {
                 Color.gray.opacity(0.2)
             }
-            .frame(width: 120, height: 120)
+            .frame(width: 160, height: 160)
             .clipShape(.circle)
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(page?.channel.name ?? channel.name ?? "Channel")
                     .font(.title2)
                 if let subscribers = page?.subscriberCount {
                     Text(subscribers)
                         .foregroundStyle(.secondary)
                 }
+                Button(subscriptions.isSubscribed(channel.id) ? "Unsubscribe" : "Subscribe") {
+                    subscriptions.toggle(page?.channel ?? channel, avatar: page?.avatar)
+                }
+                .disabled(page == nil) // wait for the real name and avatar
             }
-            Spacer()
-            Button(subscriptions.isSubscribed(channel.id) ? "Unsubscribe" : "Subscribe") {
-                subscriptions.toggle(page?.channel ?? channel, avatar: page?.avatar)
-            }
-            .disabled(page == nil) // wait for the real name and avatar
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .focusSection()
     }
 
     private func load() async {

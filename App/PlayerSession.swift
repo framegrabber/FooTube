@@ -3,8 +3,8 @@ import FooTubeCore
 import Observation
 import os
 
-/// One playback: owns the player, applies SponsorBlock skips, and measures what the diagnostics
-/// overlay shows.
+/// One playback: owns the player, applies SponsorBlock skips, resumes and records the watch
+/// position, and measures what the diagnostics overlay shows.
 @MainActor
 @Observable
 final class PlayerSession: Identifiable {
@@ -25,20 +25,31 @@ final class PlayerSession: Identifiable {
     private(set) var notice: String?
 
     private let sponsorBlock: SponsorBlockClient
+    private let history: WatchHistoryModel
     private var skipPolicy = SkipPolicy(segments: [])
     private var pollTask: Task<Void, Never>?
     private var segmentsTask: Task<Void, Never>?
     private var noticeTask: Task<Void, Never>?
+    private var prepareTask: Task<Void, Never>?
     private var timeObserver: Any?
+    private var endObserver: (any NSObjectProtocol)?
+    /// Set once playback runs from the intended start, so the position at 0 before the resume
+    /// seek never overwrites the saved one.
+    private var tracksProgress = false
+    private var lastRecordedPosition = 0.0
     private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "playback")
+
+    /// Seconds of playback between saved positions.
+    private static let recordInterval = 5.0
 
     nonisolated var id: VideoID {
         source.id
     }
 
-    init(source: PlaybackSource, sponsorBlock: SponsorBlockClient, requestedAt: ContinuousClock.Instant) {
+    init(source: PlaybackSource, sponsorBlock: SponsorBlockClient, history: WatchHistoryModel, requestedAt: ContinuousClock.Instant) {
         self.source = source
         self.sponsorBlock = sponsorBlock
+        self.history = history
         self.requestedAt = requestedAt
         resolvedAt = .now
         player = AVPlayer(playerItem: AVPlayerItem(asset: source.asset))
@@ -55,7 +66,20 @@ final class PlayerSession: Identifiable {
 
     func start() {
         guard timeObserver == nil else { return }
-        player.play()
+        let resume = history.resumePosition(for: id)
+        if resume == nil {
+            beginPlayback()
+        }
+        prepareTask = Task { [weak self] in
+            await self?.prepare(resumingAt: resume)
+        }
+        endObserver = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.didPlayToEndTimeNotification,
+            object: player.currentItem,
+            queue: .main,
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.recordProgress(reachedEnd: true) }
+        }
         segmentsTask = Task { [sponsorBlock, id] in
             let segments = await sponsorBlock.segments(for: id)
             guard !Task.isCancelled else { return }
@@ -74,6 +98,8 @@ final class PlayerSession: Identifiable {
     }
 
     func stop() {
+        recordProgress()
+        prepareTask?.cancel()
         pollTask?.cancel()
         segmentsTask?.cancel()
         noticeTask?.cancel()
@@ -81,6 +107,11 @@ final class PlayerSession: Identifiable {
             player.removeTimeObserver(timeObserver)
         }
         timeObserver = nil
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+        }
+        endObserver = nil
+        tracksProgress = false
         player.pause()
         let line = "\(source.id) stopped at \(presentationHeight)p, \(droppedFrames) dropped frames"
         logger.info("\(line, privacy: .public)")
@@ -96,6 +127,9 @@ final class PlayerSession: Identifiable {
 
     private func timeChanged(to seconds: Double) {
         guard seconds.isFinite else { return }
+        if tracksProgress, abs(seconds - lastRecordedPosition) >= Self.recordInterval {
+            recordProgress()
+        }
         switch skipPolicy.evaluate(at: seconds) {
         case let .autoSkip(segment):
             offeredSegment = nil
@@ -112,6 +146,54 @@ final class PlayerSession: Identifiable {
                 offeredSegment = nil
             }
         }
+    }
+
+    /// Starts playback; from here on the position is saved.
+    private func beginPlayback() {
+        tracksProgress = true
+        let position = player.currentTime().seconds
+        lastRecordedPosition = position.isFinite ? position : 0
+        player.play()
+    }
+
+    /// Once the item is ready: turns subtitles off (the filtered master no longer auto-selects
+    /// them; this also overrides the system's automatic subtitle setting), then seeks to `resume`,
+    /// if any, and starts playback. A seek is only reliable once the item is ready.
+    private func prepare(resumingAt resume: Double?) async {
+        guard let item = player.currentItem else { return }
+        while item.status == .unknown {
+            try? await Task.sleep(for: .milliseconds(50))
+            guard !Task.isCancelled else { return }
+        }
+        guard item.status == .readyToPlay else { return }
+        if let legible = try? await source.asset.loadMediaSelectionGroup(for: .legible) {
+            item.select(nil, in: legible)
+        }
+        if let audible = try? await source.asset.loadMediaSelectionGroup(for: .audible) {
+            let audio = item.currentMediaSelection.selectedMediaOption(in: audible)?.displayName ?? "none"
+            let line = "\(source.id) audio: \(audio) (\(audible.options.count) tracks)"
+            logger.info("\(line, privacy: .public)")
+        }
+        guard let resume, !Task.isCancelled else { return }
+        // Up to 3 s before the saved position so AVPlayer can start at a keyframe.
+        let finished = await player.seek(
+            to: CMTime(seconds: resume, preferredTimescale: 600),
+            toleranceBefore: CMTime(seconds: 3, preferredTimescale: 600),
+            toleranceAfter: .zero,
+        )
+        let line = "\(source.id) resuming at \(resume) s, seek finished: \(finished)"
+        logger.info("\(line, privacy: .public)")
+        guard !Task.isCancelled else { return }
+        beginPlayback()
+    }
+
+    /// Saves the position, or marks the video watched at its end. The history skips live streams
+    /// (indefinite duration).
+    private func recordProgress(reachedEnd: Bool = false) {
+        let position = player.currentTime().seconds
+        guard tracksProgress, position.isFinite, let item = player.currentItem else { return }
+        history.record(id, position: position, duration: item.duration.seconds, reachedEnd: reachedEnd)
+        lastRecordedPosition = position
     }
 
     private func seek(past segment: SkipSegment) {

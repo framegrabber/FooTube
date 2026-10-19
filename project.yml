@@ -29,4 +29,19 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: FooTube
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
-    scheme: {}
+        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
+    scheme:
+      testTargets:
+        - FooTubeUITests
+  FooTubeUITests:
+    type: bundle.ui-testing
+    platform: tvOS
+    sources:
+      - UITests
+    dependencies:
+      - target: FooTube
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.felixrothballer.FooTubeUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: FooTube

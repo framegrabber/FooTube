@@ -1,5 +1,6 @@
 @testable import FooTubeCore
 import Foundation
+import InnerTubeKit
 import Testing
 
 /// Hits real YouTube. Opt-in like ResolverNetworkTests.
@@ -35,6 +36,30 @@ struct CatalogNetworkTests {
         print("RESULT channel page 2: \(more.items.count) videos")
         #expect(!more.items.isEmpty)
         #expect(more.items.allSatisfy { $0.channel?.id == blender })
+    }
+
+    @Test func `channel page leaves out members-only uploads`() async throws {
+        let chappel = "UCe1Aj6VEO299Yq4WkXdoD3Q" // Alexandre Chappel, posts members-only videos regularly
+        let model = YouTubeModel()
+        let header = try await ChannelInfosResponse.sendThrowingRequest(youtubeModel: model, data: [.browseId: chappel])
+        let params = try #require(header.requestParams[.videos])
+        let raw = try await ChannelVideosResponse.sendThrowingRequest(youtubeModel: model, data: [.browseId: chappel, .params: params])
+        let membersOnly = Set(raw.videos.filter { $0.memberOnly == true }.map(\.videoId))
+        print("RESULT members-only uploads on page 1: \(membersOnly.sorted()) of \(raw.videos.count)")
+        #expect(!membersOnly.isEmpty, "badge not detected; did YouTube change the lockup?")
+
+        let page = try await InnerTubeCatalog().channel(chappel)
+        #expect(!page.videos.items.isEmpty)
+        #expect(page.videos.items.allSatisfy { !membersOnly.contains($0.id.rawValue) })
+    }
+
+    @Test func `search lists the matching channel`() async throws {
+        let page = try await InnerTubeCatalog().search("Alexandre Chappel")
+        print("RESULT search channels: \(page.channels.map { "\($0.name) \($0.subscriberCount ?? "?")" })")
+        let channel = try #require(page.channels.first { $0.id == "UCe1Aj6VEO299Yq4WkXdoD3Q" })
+        #expect(channel.name == "Alexandre Chappel")
+        #expect(channel.avatar != nil)
+        #expect(!page.items.isEmpty)
     }
 
     @Test func `feed merges two channels newest first with English relative ages`() async throws {
