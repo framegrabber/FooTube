@@ -38,6 +38,14 @@ private actor FakeChannels: Catalog {
     func moreChannelVideos(_: PageCursor) async throws(CatalogError) -> ResultsPage {
         throw .requestFailed("unused")
     }
+
+    func details(_: VideoID) async throws(CatalogError) -> VideoDetails {
+        throw .requestFailed("unused")
+    }
+
+    func suggestions(_: String) async throws(CatalogError) -> [String] {
+        throw .requestFailed("unused")
+    }
 }
 
 @Suite("Feed refresh")

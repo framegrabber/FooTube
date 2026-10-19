@@ -110,6 +110,13 @@ Research done first (HIG tab bars, Apple's tvOS media-catalog sample, User Manag
 - Deferred: per-Apple-TV-user data (needs paid program: Personal Teams can't sign User Management — verified), iPhone/iPad + sync (estimate given to owner).
 - [x] G1–G7 done and verified in the Simulator (G8 deferred)
 
+### Phase 8: Chapters, search suggestions, Up next (2026-10-19, local only, no device install)
+From the library-capabilities idea list (owner picked 1–3). InnerTubeKit `MoreVideoInfosResponse` (watch page: chapters, channel, related videos) and `AutoCompletionResponse`; no vendored changes.
+- **Core** (`Catalog.swift`): `Catalog.details(_:)` → `VideoDetails` (chapters ordered/deduped, channel ID, related videos), `VideoDetails.upNext(after:isWatched:)` (skips current, watched, live; same channel first), `Catalog.suggestions(_:)`. Unit tests `VideoDetailsTests`, network tests in `CatalogNetworkTests`.
+- **Player** (`PlayerSession.swift`, `PlayerView.swift`, `RootView.swift`, `PlaybackController.swift`): chapters as `AVPlayerItem.navigationMarkerGroups` (titles, then thumbnails); Up next as the system content proposal (`AVContentProposal` + own `UpNextViewController`, 10 s countdown, Play Now / Close, Menu closes); one player cover across videos.
+- **Search** (`SearchView.swift`): `.searchSuggestions` row under the keyboard.
+- [x] Verified in the Simulator (chapter row with thumbnails, Up next countdown + autoplay, suggestions); device check by owner pending
+
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |---|---|---|

@@ -71,4 +71,21 @@ struct CatalogNetworkTests {
         #expect(parsed.count >= 8, "ages not parseable: \(snapshot.items.prefix(10).map(\.published))")
         #expect(parsed == parsed.sorted())
     }
+
+    @Test func `watch page lists chapters and related videos`() async throws {
+        // Blender Guru "Beginner Blender 4.0 Tutorial", ~95 chapters in its description.
+        let details = try await InnerTubeCatalog().details(#require(VideoID("4haAdmHqGOw")))
+        print("RESULT details: \(details.chapters.count) chapters \(details.chapters.prefix(3).map { "\($0.start) \($0.title)" }), \(details.related.count) related, e.g. \(details.related.prefix(3).map(\.title))")
+        #expect(details.chapters.count >= 3)
+        #expect(details.chapters.first?.start == 0)
+        #expect(details.related.count >= 5)
+        #expect(details.related.allSatisfy { !$0.title.isEmpty && $0.thumbnail != nil })
+    }
+
+    @Test func `suggestions complete a partial query`() async throws {
+        let suggestions = try await InnerTubeCatalog().suggestions("blender tut")
+        print("RESULT suggestions: \(suggestions)")
+        #expect(suggestions.count >= 3)
+        #expect(suggestions.allSatisfy { $0.localizedCaseInsensitiveContains("blender") })
+    }
 }

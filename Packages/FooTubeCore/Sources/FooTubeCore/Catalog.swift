@@ -84,12 +84,48 @@ public struct ChannelPage: Sendable {
     public let videos: ResultsPage
 }
 
+/// A chapter from the video description, for the player's chapter markers.
+public struct Chapter: Hashable, Sendable {
+    public let title: String
+    /// Seconds from the start of the video.
+    public let start: Double
+    public let thumbnail: URL?
+}
+
+/// What the watch page adds to a video: its chapters, its channel and YouTube's related videos.
+public struct VideoDetails: Sendable {
+    /// Ordered by start, starts unique; empty when the video has no chapters.
+    public let chapters: [Chapter]
+    /// ID of the video's own channel.
+    public let channelID: String?
+    public let related: [VideoSummary]
+
+    public init(chapters: [Chapter], channelID: String?, related: [VideoSummary]) {
+        self.chapters = chapters
+        self.channelID = channelID
+        self.related = related
+    }
+
+    /// The video to propose after `current`: a related video that isn't `current`, isn't watched to
+    /// the end, and has a duration (live streams and upcoming premieres have none). One from the
+    /// video's own channel comes first: YouTube's related list without a login is largely generic
+    /// popular videos.
+    public func upNext(after current: VideoID, isWatched: (VideoID) -> Bool) -> VideoSummary? {
+        let fitting = related.filter { $0.id != current && $0.duration != nil && !isWatched($0.id) }
+        return fitting.first { channelID != nil && $0.channel?.id == channelID } ?? fitting.first
+    }
+}
+
 public protocol Catalog: Sendable {
     func search(_ query: String) async throws(CatalogError) -> ResultsPage
     func moreSearchResults(_ cursor: PageCursor) async throws(CatalogError) -> ResultsPage
     /// Channel header plus the first page of its uploads ("Videos" tab), newest first.
     func channel(_ id: String) async throws(CatalogError) -> ChannelPage
     func moreChannelVideos(_ cursor: PageCursor) async throws(CatalogError) -> ResultsPage
+    /// Chapters and related videos of a video (YouTube's watch page).
+    func details(_ id: VideoID) async throws(CatalogError) -> VideoDetails
+    /// Search suggestions for what has been typed so far, most relevant first.
+    func suggestions(_ query: String) async throws(CatalogError) -> [String]
 }
 
 /// Catalog backed by YouTube's InnerTube API via the vendored b5i/YouTubeKit (`InnerTubeKit`).
@@ -97,6 +133,7 @@ public struct InnerTubeCatalog: Catalog {
     /// Thumbnails are downscaled for the A8: the smallest one at least this wide is used.
     static let preferredThumbnailWidth = 480
     static let preferredAvatarWidth = 240
+    static let preferredChapterThumbnailWidth = 320
 
     private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "catalog")
 
@@ -167,6 +204,43 @@ public struct InnerTubeCatalog: Catalog {
             logger.error("search continuation failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
         }
+    }
+
+    public func details(_ id: VideoID) async throws(CatalogError) -> VideoDetails {
+        do {
+            let response = try await MoreVideoInfosResponse.sendThrowingRequest(youtubeModel: Self.model(), data: [.query: id.rawValue])
+            return VideoDetails(
+                chapters: Self.chapters(response.chapters ?? []),
+                channelID: response.channel.flatMap { $0.channelId.isEmpty ? nil : $0.channelId },
+                related: Self.page(response.recommendedVideos, token: nil, visitorData: nil).items,
+            )
+        } catch {
+            logger.error("details \(id, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            throw .requestFailed(error.localizedDescription)
+        }
+    }
+
+    public func suggestions(_ query: String) async throws(CatalogError) -> [String] {
+        do {
+            return try await AutoCompletionResponse.sendThrowingRequest(youtubeModel: Self.model(), data: [.query: query]).autoCompletionEntries
+        } catch {
+            logger.error("suggestions failed: \(error.localizedDescription, privacy: .public)")
+            throw .requestFailed(error.localizedDescription)
+        }
+    }
+
+    /// Chapters without a title or start are dropped; the rest are ordered by start, one per start.
+    static func chapters(_ chapters: [MoreVideoInfosResponse.Chapter]) -> [Chapter] {
+        var seen = Set<Int>()
+        return chapters
+            .compactMap { chapter -> (Int, Chapter)? in
+                guard let start = chapter.startTimeSeconds, start >= 0,
+                      let title = chapter.title, !title.isEmpty else { return nil }
+                return (start, Chapter(title: title, start: Double(start), thumbnail: preferredThumbnail(chapter.thumbnail, width: preferredChapterThumbnailWidth)))
+            }
+            .sorted { $0.0 < $1.0 }
+            .filter { seen.insert($0.0).inserted }
+            .map(\.1)
     }
 
     static func page(

@@ -15,6 +15,8 @@ struct SearchView: View {
     @State private var next: PageCursor?
     @State private var isLoadingMore = false
     @State private var error: String?
+    /// YouTube's completions for the typed text, shown under the search field.
+    @State private var suggestions: [String] = []
     @State private var didApplyLaunchArguments = false
 
     var body: some View {
@@ -33,12 +35,23 @@ struct SearchView: View {
             }
             .scrollClipDisabled() // focused lockups lift past the scroll view's edges
             .searchable(text: $query, prompt: "Search YouTube")
+            .searchSuggestions {
+                ForEach(suggestions, id: \.self) { suggestion in
+                    Text(suggestion).searchCompletion(suggestion)
+                }
+            }
             .task(id: query) {
-                // Debounce typing. An empty query keeps the last results; returning to this view
-                // (task re-runs on appear) must not replace paged results with page 1 again.
+                // Debounce typing: suggestions first, then the search itself. An empty query keeps
+                // the last results; returning to this view (task re-runs on appear) must not replace
+                // paged results with page 1 again.
                 let text = query.trimmingCharacters(in: .whitespaces)
                 guard !text.isEmpty, text != searchedQuery else { return }
-                try? await Task.sleep(for: .milliseconds(600))
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+                let completions = await (try? catalog.suggestions(text)) ?? []
+                guard !Task.isCancelled else { return }
+                suggestions = completions
+                try? await Task.sleep(for: .milliseconds(350))
                 guard !Task.isCancelled else { return }
                 await search(text)
             }

@@ -44,22 +44,34 @@ struct RootView: View {
         .overlay(alignment: .bottom) {
             StatusBanner(status: playback.status)
         }
-        .fullScreenCover(item: $playback.session) { session in
-            PlayerView(session: session)
-                .ignoresSafeArea()
-                .overlay(alignment: .bottomLeading) {
-                    if let notice = session.notice {
-                        Text(notice)
-                            .font(.callout)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(.black.opacity(0.7), in: .capsule)
-                            .padding(60)
-                            .transition(.opacity)
-                            .allowsHitTesting(false)
+        // Presented while there is a session; Up next swaps the session inside the same cover (a new
+        // PlayerView per video via `.id`) instead of dismissing and presenting again.
+        .fullScreenCover(isPresented: Binding(get: { playback.session != nil }, set: {
+            if !$0 {
+                playback.session = nil
+            }
+        })) {
+            if let session = playback.session {
+                PlayerView(session: session, onPlayNext: { playback.play($0) }, onClose: { playback.session = nil })
+                    .id(session.id)
+                    .ignoresSafeArea()
+                    .overlay(alignment: .bottomLeading) {
+                        if let notice = session.notice {
+                            Text(notice)
+                                .font(.callout)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(.black.opacity(0.7), in: .capsule)
+                                .padding(60)
+                                .transition(.opacity)
+                                .allowsHitTesting(false)
+                        }
                     }
-                }
-                .onExitCommand { playback.session = nil }
+                    .overlay(alignment: .bottom) {
+                        StatusBanner(status: playback.status) // loading the next video
+                    }
+                    .onExitCommand { playback.session = nil }
+            }
         }
         .task {
             // Debug/test hooks (simctl/devicectl launch arguments), once per launch:

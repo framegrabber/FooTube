@@ -14,7 +14,7 @@ struct FooTubeApp: App {
     init() {
         let history = WatchHistoryModel(store: WatchHistory())
         _watchHistory = State(initialValue: history)
-        _playback = State(initialValue: PlaybackController(resolver: YouTubeKitResolver(), sponsorBlock: SponsorBlockClient(), history: history))
+        _playback = State(initialValue: PlaybackController(resolver: YouTubeKitResolver(), catalog: Self.catalog, sponsorBlock: SponsorBlockClient(), history: history))
     }
 
     var body: some Scene {

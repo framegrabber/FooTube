@@ -15,13 +15,15 @@ final class PlaybackController {
     private(set) var status: Status = .idle
 
     private let resolver: any StreamResolver
+    private let catalog: any Catalog
     private let sponsorBlock: SponsorBlockClient
     private let history: WatchHistoryModel
     private var task: Task<Void, Never>?
     private var clearTask: Task<Void, Never>?
 
-    init(resolver: any StreamResolver, sponsorBlock: SponsorBlockClient, history: WatchHistoryModel) {
+    init(resolver: any StreamResolver, catalog: any Catalog, sponsorBlock: SponsorBlockClient, history: WatchHistoryModel) {
         self.resolver = resolver
+        self.catalog = catalog
         self.sponsorBlock = sponsorBlock
         self.history = history
     }
@@ -49,12 +51,15 @@ final class PlaybackController {
                 session = PlayerSession(
                     source: PlaybackSource(stream: stream),
                     video: summary,
+                    catalog: catalog,
                     sponsorBlock: sponsorBlock,
                     history: history,
                     requestedAt: requestedAt,
                 )
             } catch {
                 guard !Task.isCancelled else { return }
+                // Up next failed: close the finished player so the message is visible.
+                session = nil
                 fail(error.message)
             }
         }

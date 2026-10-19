@@ -1,10 +1,13 @@
 import AVFoundation
+import AVKit
 import FooTubeCore
 import Observation
 import os
+import UIKit
 
 /// One playback: owns the player, applies SponsorBlock skips, resumes and records the watch
-/// position, and logs playback metrics (time to first frame, resolution, dropped frames).
+/// position, shows the video's chapters as chapter markers, proposes a related video at the end
+/// ("Up next"), and logs playback metrics (time to first frame, resolution, dropped frames).
 @MainActor
 @Observable
 final class PlayerSession: Identifiable {
@@ -23,9 +26,12 @@ final class PlayerSession: Identifiable {
     private(set) var offeredSegment: SkipSegment?
     /// Brief message after an automatic skip.
     private(set) var notice: String?
+    /// Related video proposed when this one ends; nil until the watch page has loaded, or if none fits.
+    private(set) var upNext: VideoSummary?
 
     /// Title, channel and thumbnail for the History tab; nil when played by ID only.
     private let video: VideoSummary?
+    private let catalog: any Catalog
     private let sponsorBlock: SponsorBlockClient
     private let history: WatchHistoryModel
     private var skipPolicy = SkipPolicy(segments: [])
@@ -33,6 +39,7 @@ final class PlayerSession: Identifiable {
     private var segmentsTask: Task<Void, Never>?
     private var noticeTask: Task<Void, Never>?
     private var prepareTask: Task<Void, Never>?
+    private var detailsTask: Task<Void, Never>?
     private var timeObserver: Any?
     private var endObserver: (any NSObjectProtocol)?
     /// Set once playback runs from the intended start, so the position at 0 before the resume
@@ -43,6 +50,9 @@ final class PlayerSession: Identifiable {
 
     /// Seconds of playback between saved positions.
     private static let recordInterval = 5.0
+    /// Seconds the Up next countdown runs after the video ends before the proposal plays.
+    private static let upNextCountdown = 10.0
+    private static let chapterArtwork = (width: 320, height: 180)
 
     nonisolated var id: VideoID {
         source.id
@@ -51,12 +61,14 @@ final class PlayerSession: Identifiable {
     init(
         source: PlaybackSource,
         video: VideoSummary?,
+        catalog: any Catalog,
         sponsorBlock: SponsorBlockClient,
         history: WatchHistoryModel,
         requestedAt: ContinuousClock.Instant,
     ) {
         self.source = source
         self.video = video
+        self.catalog = catalog
         self.sponsorBlock = sponsorBlock
         self.history = history
         self.requestedAt = requestedAt
@@ -81,6 +93,9 @@ final class PlayerSession: Identifiable {
         }
         prepareTask = Task { [weak self] in
             await self?.prepare(resumingAt: resume)
+        }
+        detailsTask = Task { [weak self] in
+            await self?.loadDetails()
         }
         endObserver = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification,
@@ -109,6 +124,7 @@ final class PlayerSession: Identifiable {
     func stop() {
         recordProgress()
         prepareTask?.cancel()
+        detailsTask?.cancel()
         pollTask?.cancel()
         segmentsTask?.cancel()
         noticeTask?.cancel()
@@ -169,12 +185,7 @@ final class PlayerSession: Identifiable {
     /// them; this also overrides the system's automatic subtitle setting), then seeks to `resume`,
     /// if any, and starts playback. A seek is only reliable once the item is ready.
     private func prepare(resumingAt resume: Double?) async {
-        guard let item = player.currentItem else { return }
-        while item.status == .unknown {
-            try? await Task.sleep(for: .milliseconds(50))
-            guard !Task.isCancelled else { return }
-        }
-        guard item.status == .readyToPlay else { return }
+        guard let item = await readyItem() else { return }
         if let legible = try? await source.asset.loadMediaSelectionGroup(for: .legible) {
             item.select(nil, in: legible)
         }
@@ -194,6 +205,83 @@ final class PlayerSession: Identifiable {
         logger.info("\(line, privacy: .public)")
         guard !Task.isCancelled else { return }
         beginPlayback()
+    }
+
+    /// The current item once it is ready to play; nil if it failed or the task was cancelled.
+    private func readyItem() async -> AVPlayerItem? {
+        guard let item = player.currentItem else { return nil }
+        while item.status == .unknown {
+            try? await Task.sleep(for: .milliseconds(50))
+            guard !Task.isCancelled else { return nil }
+        }
+        return item.status == .readyToPlay ? item : nil
+    }
+
+    /// Loads the watch page: proposes the first fitting related video for the end, then shows the
+    /// chapters as chapter markers, first titles only, then again with their thumbnails once loaded.
+    /// Live streams (no finite duration) get neither.
+    private func loadDetails() async {
+        let details: VideoDetails
+        do throws(CatalogError) {
+            details = try await catalog.details(id)
+        } catch {
+            let line = "\(source.id) no chapters or up next: \(error.message)"
+            logger.error("\(line, privacy: .public)")
+            return
+        }
+        guard let item = await readyItem(), item.duration.seconds.isFinite else { return }
+        let duration = item.duration.seconds
+        if let next = details.upNext(after: id, isWatched: { history.isWatched($0) }) {
+            await propose(next, on: item)
+        }
+        guard !details.chapters.isEmpty, !Task.isCancelled else { return }
+        item.navigationMarkerGroups = Self.markerGroups(details.chapters, duration: duration, artwork: [:])
+        var artwork: [URL: Data] = [:]
+        for url in details.chapters.compactMap(\.thumbnail) {
+            let request = RemoteImageLoader.Request(url: url, pixelWidth: Self.chapterArtwork.width, pixelHeight: Self.chapterArtwork.height)
+            artwork[url] = await RemoteImageLoader.shared.image(for: request)?.jpegData(compressionQuality: 0.8)
+            guard !Task.isCancelled else { return }
+        }
+        item.navigationMarkerGroups = Self.markerGroups(details.chapters, duration: duration, artwork: artwork)
+        let line = "\(source.id) \(details.chapters.count) chapters, up next: \(upNext?.id.rawValue ?? "none")"
+        logger.info("\(line, privacy: .public)")
+    }
+
+    /// Sets the item's content proposal; the player presents it when the video ends.
+    private func propose(_ next: VideoSummary, on item: AVPlayerItem) async {
+        var preview: UIImage?
+        if let url = next.thumbnail {
+            preview = await RemoteImageLoader.shared.image(for: .init(url: url, pixelWidth: 960, pixelHeight: 540))
+        }
+        guard !Task.isCancelled else { return }
+        let proposal = AVContentProposal(contentTimeForTransition: .indefinite, title: next.title, previewImage: preview)
+        proposal.automaticAcceptanceInterval = Self.upNextCountdown
+        item.nextContentProposal = proposal
+        upNext = next
+    }
+
+    /// One chapter marker per chapter, each lasting until the next one (the last until the end).
+    private static func markerGroups(_ chapters: [Chapter], duration: Double, artwork: [URL: Data]) -> [AVNavigationMarkersGroup] {
+        let markers = chapters.enumerated().compactMap { index, chapter -> AVTimedMetadataGroup? in
+            let end = min(index + 1 < chapters.count ? chapters[index + 1].start : duration, duration)
+            guard chapter.start < end else { return nil }
+            let title = AVMutableMetadataItem()
+            title.identifier = .commonIdentifierTitle
+            title.value = chapter.title as NSString
+            title.extendedLanguageTag = "und"
+            var items: [AVMetadataItem] = [title]
+            if let data = chapter.thumbnail.flatMap({ artwork[$0] }) {
+                let image = AVMutableMetadataItem()
+                image.identifier = .commonIdentifierArtwork
+                image.value = data as NSData
+                image.dataType = kCMMetadataBaseDataType_JPEG as String
+                image.extendedLanguageTag = "und"
+                items.append(image)
+            }
+            let range = CMTimeRange(start: CMTime(seconds: chapter.start, preferredTimescale: 600), end: CMTime(seconds: end, preferredTimescale: 600))
+            return AVTimedMetadataGroup(items: items, timeRange: range)
+        }
+        return [AVNavigationMarkersGroup(title: nil, timedNavigationMarkers: markers)]
     }
 
     /// Saves the position, or marks the video watched at its end. The history skips live streams
