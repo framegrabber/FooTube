@@ -16,6 +16,8 @@ products="$(xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "
 
 xcrun simctl boot "$SIM" 2>/dev/null || true
 xcrun simctl bootstatus "$SIM" >/dev/null
+# Show the window (simctl boots headless); FOOTUBE_HEADLESS=1 skips this for scripted runs.
+[[ -n "${FOOTUBE_HEADLESS:-}" ]] || open -a Simulator
 xcrun simctl install "$SIM" "$products/FooTube.app"
 xcrun simctl terminate "$SIM" "$BUNDLE" 2>/dev/null || true
 xcrun simctl launch "$SIM" "$BUNDLE" "$@"
