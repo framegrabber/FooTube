@@ -24,6 +24,8 @@ final class PlayerSession: Identifiable {
     /// Brief message after an automatic skip.
     private(set) var notice: String?
 
+    /// Title, channel and thumbnail for the History tab; nil when played by ID only.
+    private let video: VideoSummary?
     private let sponsorBlock: SponsorBlockClient
     private let history: WatchHistoryModel
     private var skipPolicy = SkipPolicy(segments: [])
@@ -46,8 +48,15 @@ final class PlayerSession: Identifiable {
         source.id
     }
 
-    init(source: PlaybackSource, sponsorBlock: SponsorBlockClient, history: WatchHistoryModel, requestedAt: ContinuousClock.Instant) {
+    init(
+        source: PlaybackSource,
+        video: VideoSummary?,
+        sponsorBlock: SponsorBlockClient,
+        history: WatchHistoryModel,
+        requestedAt: ContinuousClock.Instant,
+    ) {
         self.source = source
+        self.video = video
         self.sponsorBlock = sponsorBlock
         self.history = history
         self.requestedAt = requestedAt
@@ -192,7 +201,7 @@ final class PlayerSession: Identifiable {
     private func recordProgress(reachedEnd: Bool = false) {
         let position = player.currentTime().seconds
         guard tracksProgress, position.isFinite, let item = player.currentItem else { return }
-        history.record(id, position: position, duration: item.duration.seconds, reachedEnd: reachedEnd)
+        history.record(id, position: position, duration: item.duration.seconds, reachedEnd: reachedEnd, video: video)
         lastRecordedPosition = position
     }
 

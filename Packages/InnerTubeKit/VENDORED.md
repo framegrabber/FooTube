@@ -8,5 +8,6 @@
 1. `Sources/YouTubeKit` → `Sources/InnerTubeKit`; package, product and target renamed to `InnerTubeKit`.
 2. `VideoInfosWithDownloadFormatsResponse.swift`: module-qualified `YouTubeKit.VideoDownloadFormat` / `YouTubeKit.AudioOnlyFormat` → `InnerTubeKit.…`.
 3. `Package.swift`: platforms set to tvOS 16 / macOS 13 (upstream declares none); tests not vendored.
+4. `YouTubeModel.swift`: the channel (`getChannelVideosHeaders`) and channel continuation (`channelContinuationHeaders`) request bodies get `"hl"`/`"gl"` from `selectedLocale`, like the search bodies; upstream omits them, so channel pages and the feed came back in English regardless of locale.
 
 Do not edit vendored sources without adding the change here. To update: re-copy from upstream at a new tag and re-apply the list above.

@@ -25,20 +25,16 @@ struct ChannelView: View {
             }
             .padding(80)
         }
-        .scrollClipDisabled() // the focused card's scale, ring and shadow reach past the edges
+        .scrollClipDisabled() // focused cards lift past the edges
         .task(id: channel.id) { await load() }
     }
 
     /// A full-width focus section, so pressing up from any first-row card lands on Subscribe.
     private var header: some View {
         HStack(spacing: 32) {
-            AsyncImage(url: page?.avatar) { image in
-                image.resizable()
-            } placeholder: {
-                Color.gray.opacity(0.2)
-            }
-            .frame(width: 160, height: 160)
-            .clipShape(.circle)
+            RemoteImage(url: page?.avatar, size: CGSize(width: 160, height: 160))
+                .frame(width: 160, height: 160)
+                .clipShape(.circle)
             VStack(alignment: .leading, spacing: 12) {
                 Text(page?.channel.name ?? channel.name ?? "Channel")
                     .font(.title2)

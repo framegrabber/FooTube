@@ -1,4 +1,4 @@
-import FooTubeCore
+@testable import FooTubeCore
 import Foundation
 import Testing
 
@@ -105,5 +105,36 @@ struct WatchHistoryTests {
         #expect(history.entries().isEmpty)
         try history.record(video, position: 100, duration: 600)
         #expect(history.entries().map(\.videoID) == [video])
+    }
+
+    private func summary(_ id: VideoID, title: String) -> VideoSummary {
+        VideoSummary(id: id, title: title, channel: nil, duration: nil, viewCount: nil, published: nil, thumbnail: nil)
+    }
+
+    @Test func `keeps the stored summary when a later record has none`() throws {
+        let history = WatchHistory(defaults: freshDefaults())
+        try history.record(video, position: 100, duration: 600, video: summary(video, title: "First"))
+        let kept = try #require(try history.record(video, position: 200, duration: 600))
+        #expect(kept.video?.title == "First")
+        #expect(history.entry(for: video)?.video?.title == "First")
+
+        try history.record(video, position: 300, duration: 600, video: summary(video, title: "Renamed"))
+        #expect(history.entry(for: video)?.video?.title == "Renamed")
+    }
+
+    @Test func `decodes entries stored without a summary`() throws {
+        let defaults = freshDefaults()
+        let legacy = """
+        [{"videoID":"r1jOsar2zV4","position":125.5,"duration":600,"updatedAt":800000000,"watched":false}]
+        """
+        defaults.set(Data(legacy.utf8), forKey: "watchHistory.v1")
+        let history = WatchHistory(defaults: defaults)
+        let entry = try #require(history.entries().first)
+        #expect(entry.videoID == video)
+        #expect(entry.position == 125.5)
+        #expect(entry.video == nil)
+
+        try history.record(video, position: 130, duration: 600, video: summary(video, title: "Now known"))
+        #expect(history.entry(for: video)?.video?.title == "Now known")
     }
 }

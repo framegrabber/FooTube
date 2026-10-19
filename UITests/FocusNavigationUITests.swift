@@ -16,7 +16,8 @@ final class FocusNavigationUITests: XCTestCase {
 
     private func launch(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = arguments
+        // English UI and YouTube responses, so label predicates (" views") don't depend on the Simulator language.
+        app.launchArguments = arguments + ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         return app
     }
@@ -103,5 +104,66 @@ final class FocusNavigationUITests: XCTestCase {
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS 'Blender'")).firstMatch.exists)
         usleep(3_000_000)
         attachScreenshot("subscriptions with sidebar")
+    }
+
+    /// G2: on a channel page pushed in the Search tab, going up to the tab bar and back down returns
+    /// the tab to its root (and clears the search).
+    func testReturningFromTabBarPopsChannelPage() {
+        let app = launch(["-channel", blender])
+        XCTAssertTrue(app.buttons.matching(subscribeButton).firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(move(.down, until: videoCard, in: app), "no card focused")
+        press(.up, times: 6) // card → Subscribe → tab bar
+        press(.down)
+        usleep(1_500_000)
+        attachScreenshot("after returning from the tab bar")
+        XCTAssertFalse(app.buttons.matching(subscribeButton).firstMatch.exists, "channel page still shown")
+    }
+
+    /// G1 + G5: subscribing shows the channel (with avatar, see screenshot) in Subscriptions right
+    /// away; "Add to Watch Later" from the long-press menu lists the video in Watch Later.
+    func testSubscribeAndWatchLaterShowUpImmediately() {
+        let app = launch(["-channel", "UCe1Aj6VEO299Yq4WkXdoD3Q"])
+        let button = app.buttons.matching(subscribeButton).firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons.matching(videoCard).firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(move(.down, until: videoCard, in: app), "no card focused")
+        let title = focused(app).label
+
+        let removeLater = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Remove from Watch Later'")).firstMatch
+        let addLater = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Add to Watch Later'")).firstMatch
+        remote.press(.select, forDuration: 2)
+        if removeLater.waitForExistence(timeout: 3) { // left over from an earlier run: remove, reopen
+            press(.select)
+            remote.press(.select, forDuration: 2)
+        }
+        attachScreenshot("card menu")
+        XCTAssertTrue(addLater.waitForExistence(timeout: 5), "no Watch Later item in the menu")
+        press(.select)
+        usleep(1_000_000)
+        XCTAssertTrue(videoCard.evaluate(with: focused(app)), "menu did not close back to the card: \(focused(app).label)")
+
+        press(.up)
+        XCTAssertTrue(subscribeButton.evaluate(with: focused(app)), "Subscribe not focused: \(focused(app).label)")
+        if focused(app).label == "Unsubscribe" { // start from "not subscribed"
+            press(.select)
+            XCTAssertTrue(app.buttons["Subscribe"].waitForExistence(timeout: 5))
+        }
+        press(.select)
+        XCTAssertTrue(app.buttons["Unsubscribe"].waitForExistence(timeout: 5))
+
+        press(.up) // tab bar (Search)
+        press(.left) // Subscriptions
+        press(.down)
+        usleep(2_000_000)
+        attachScreenshot("subscriptions right after subscribing")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS 'Alexandre Chappel'")).firstMatch.exists)
+        XCTAssertFalse(app.buttons.matching(subscribeButton).firstMatch.exists, "still on the channel page")
+
+        press(.up, times: 3)
+        press(.right, times: 2) // Watch Later
+        press(.down)
+        usleep(1_500_000)
+        attachScreenshot("watch later")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", title)).firstMatch.exists, "video not in Watch Later")
     }
 }

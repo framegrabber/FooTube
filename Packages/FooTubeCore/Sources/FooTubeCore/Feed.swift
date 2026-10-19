@@ -76,25 +76,34 @@ enum FeedMerger {
             .map(\.element)
     }
 
-    /// Seconds since publishing from YouTube's English relative text ("3 days ago",
-    /// "Streamed 2 hours ago"). Requests use `en-US` so this stays parseable.
+    /// Seconds since publishing from YouTube's English or German relative text ("3 days ago",
+    /// "Streamed 2 hours ago", "vor 3 Tagen", "vor 2 Tagen gestreamt", "Premiere vor 6 Tagen").
     static func age(of text: String) -> Double? {
-        let words = text.lowercased().split(separator: " ")
-        guard words.count >= 3, words.last == "ago",
-              let count = Double(words[words.count - 3]) else { return nil }
-        let unit = words[words.count - 2].hasSuffix("s") ? words[words.count - 2].dropLast() : words[words.count - 2]
-        let seconds: Double? = switch unit {
-        case "second": 1
-        case "minute": 60
-        case "hour": 3600
-        case "day": 86400
-        case "week": 7 * 86400
-        case "month": 30 * 86400
-        case "year": 365 * 86400
-        default: nil
+        let words = text.lowercased().split(separator: " ").map(String.init)
+        let count: Double?
+        let unit: String
+        if let ago = words.lastIndex(of: "ago"), ago >= 2 {
+            count = Double(words[ago - 2])
+            unit = words[ago - 1]
+        } else if let vor = words.firstIndex(of: "vor"), vor + 2 < words.count {
+            count = Double(words[vor + 1])
+            unit = words[vor + 2]
+        } else {
+            return nil
         }
-        return seconds.map { $0 * count }
+        guard let count, let seconds = unitSeconds[unit] else { return nil }
+        return seconds * count
     }
+
+    private static let unitSeconds: [String: Double] = [
+        "second": 1, "seconds": 1, "sekunde": 1, "sekunden": 1,
+        "minute": 60, "minutes": 60, "minuten": 60,
+        "hour": 3600, "hours": 3600, "stunde": 3600, "stunden": 3600,
+        "day": 86400, "days": 86400, "tag": 86400, "tagen": 86400,
+        "week": 7 * 86400, "weeks": 7 * 86400, "woche": 7 * 86400, "wochen": 7 * 86400,
+        "month": 30 * 86400, "months": 30 * 86400, "monat": 30 * 86400, "monaten": 30 * 86400,
+        "year": 365 * 86400, "years": 365 * 86400, "jahr": 365 * 86400, "jahren": 365 * 86400,
+    ]
 }
 
 /// Last feed on disk so the Subscriptions tab shows instantly on launch.

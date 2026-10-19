@@ -1,14 +1,16 @@
 import FooTubeCore
 import SwiftUI
 
-/// Grid of video cards. Selecting plays; long press opens a menu with "Open <channel>"
-/// when `onOpenChannel` is set. `onReachEnd` is called when the last card appears, for paging.
+/// Grid of video cards (tvOS lockups). Selecting plays; long press opens a menu with "Open <channel>"
+/// (when `onOpenChannel` is set) and Add to / Remove from Watch Later. `onReachEnd` is called when the
+/// last card appears, for paging. Put it in a scroll view with `.scrollClipDisabled()` so focused cards
+/// can lift past its edges.
 struct VideoGrid: View {
     let videos: [VideoSummary]
     var onReachEnd: (() -> Void)?
     var onOpenChannel: ((ChannelRef) -> Void)?
 
-    /// Wide gaps leave room for the focused card's scale, ring and shadow.
+    /// Wide gaps leave room for the focused card's lift and shadow.
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 48), count: 4)
 
     var body: some View {
@@ -32,32 +34,43 @@ private struct VideoGridCell: View {
 
     @Environment(PlaybackController.self) private var playback
     @Environment(WatchHistoryModel.self) private var watchHistory
+    @Environment(WatchLaterModel.self) private var watchLater
 
     var body: some View {
-        if let channel = video.channel, let onOpenChannel {
-            card.contextMenu {
+        card.contextMenu {
+            if let channel = video.channel, let onOpenChannel {
                 Button("Open \(channel.name ?? "Channel")", systemImage: "person.crop.rectangle") {
                     onOpenChannel(channel)
                 }
-            } preview: {
-                // An opaque preview of exactly the thumbnail; the default preview snapshots the
-                // whole card (thumbnail, text, focus effect) onto a white platter.
-                thumbnail
-                    .frame(width: 640, height: 360)
-                    .clipShape(VideoThumbnail.shape)
             }
-        } else {
-            card
+            if watchLater.contains(video.id) {
+                Button("Remove from Watch Later", systemImage: "text.badge.minus") {
+                    watchLater.toggle(video)
+                }
+            } else {
+                Button("Add to Watch Later", systemImage: "text.badge.plus") {
+                    watchLater.toggle(video)
+                }
+            }
+        } preview: {
+            // An opaque preview of exactly the thumbnail; the default preview snapshots the
+            // whole card (thumbnail and text) onto a platter.
+            thumbnail
+                .frame(width: VideoThumbnail.displaySize.width, height: VideoThumbnail.displaySize.height)
+                .clipShape(VideoThumbnail.shape)
         }
     }
 
+    /// The tvOS lockup: the borderless style lifts the thumbnail (highlight hover effect: lift,
+    /// specular highlight, gimbal tilt) and moves the text below out of its way.
     private var card: some View {
         Button {
-            playback.play(video.id)
+            playback.play(video)
         } label: {
             VideoCard(video: video, thumbnail: thumbnail)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(.borderless)
+        .buttonBorderShape(.roundedRectangle(radius: VideoThumbnail.cornerRadius))
     }
 
     private var thumbnail: VideoThumbnail {
@@ -69,6 +82,8 @@ private struct VideoGridCell: View {
     }
 }
 
+/// Label of a borderless video button: the thumbnail carries the focus effect (badges and progress
+/// move with it); title and details stay plain text.
 struct VideoCard: View {
     let video: VideoSummary
     let thumbnail: VideoThumbnail
@@ -76,7 +91,8 @@ struct VideoCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             thumbnail
-                .cardFocusHighlight(VideoThumbnail.shape)
+                .clipShape(VideoThumbnail.shape)
+                .hoverEffect(.highlight)
 
             Text(video.title)
                 .font(.callout)
@@ -92,7 +108,10 @@ struct VideoCard: View {
 
 /// 16:9 thumbnail with duration badge and watch state. Not clipped: callers clip to `shape`.
 struct VideoThumbnail: View {
-    static let shape = RoundedRectangle(cornerRadius: 12)
+    static let cornerRadius: CGFloat = 12
+    static let shape = RoundedRectangle(cornerRadius: cornerRadius)
+    /// Largest size shown (the long-press preview); grid cards are smaller, so one decode serves both.
+    static let displaySize = CGSize(width: 640, height: 360)
 
     let video: VideoSummary
     /// Fraction watched 0...1, nil if never played.
@@ -100,17 +119,9 @@ struct VideoThumbnail: View {
     let isWatched: Bool
 
     var body: some View {
-        Color.gray.opacity(0.2)
+        RemoteImage(url: video.thumbnail, size: Self.displaySize)
+            .opacity(isWatched ? 0.6 : 1)
             .aspectRatio(16 / 9, contentMode: .fit)
-            .overlay {
-                AsyncImage(url: video.thumbnail) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Color.clear
-                }
-                .opacity(isWatched ? 0.6 : 1)
-            }
-            .clipped()
             .overlay(alignment: .topLeading) {
                 if isWatched {
                     Label("Watched", systemImage: "checkmark")
@@ -157,68 +168,5 @@ private extension View {
             .padding(.vertical, 4)
             .background(.black.opacity(0.75), in: .rect(cornerRadius: 6))
             .padding(8)
-    }
-}
-
-/// Focus style for cards (videos, channels), like the tvOS home screen: the focused card scales
-/// up with a spring. Put `.cardFocusHighlight(_:)` on the card's artwork for the ring and shadow.
-/// Shadows SwiftUI's own tvOS `CardButtonStyle` inside this module.
-struct CardButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        CardButtonBody(configuration: configuration)
-    }
-}
-
-/// `ButtonStyleConfiguration` has no focus state on tvOS; `isFocused` in the style's body view
-/// reflects the enclosing button.
-private struct CardButtonBody: View {
-    let configuration: ButtonStyleConfiguration
-
-    @Environment(\.isFocused) private var isFocused
-
-    var body: some View {
-        configuration.label
-            .scaleEffect(scale)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFocused)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
-    }
-
-    private var scale: CGFloat {
-        if configuration.isPressed {
-            return 1.02
-        }
-        return isFocused ? 1.08 : 1
-    }
-}
-
-extension View {
-    /// Clips card artwork to `shape` and, while the enclosing button is focused, draws a ring
-    /// (black in light, white in dark appearance) and a drop shadow outside it, so clipping the
-    /// artwork never cuts the effect.
-    func cardFocusHighlight(_ shape: some InsettableShape) -> some View {
-        modifier(CardFocusHighlight(shape: shape))
-    }
-}
-
-private struct CardFocusHighlight<S: InsettableShape>: ViewModifier {
-    let shape: S
-
-    @Environment(\.isFocused) private var isFocused
-
-    func body(content: Content) -> some View {
-        content
-            .clipShape(shape)
-            .overlay {
-                shape
-                    .inset(by: -5)
-                    .strokeBorder(Color.primary, lineWidth: 5)
-                    .opacity(isFocused ? 1 : 0)
-            }
-            .shadow(
-                color: isFocused ? .black.opacity(0.4) : .clear,
-                radius: isFocused ? 20 : 0,
-                y: isFocused ? 12 : 0,
-            )
-            .animation(.easeOut(duration: 0.2), value: isFocused)
     }
 }

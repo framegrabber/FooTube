@@ -103,10 +103,14 @@ public struct InnerTubeCatalog: Catalog {
     public init() {}
 
     /// YouTubeModel is a non-Sendable class; a fresh one per request keeps this type Sendable.
-    /// English responses keep relative ages ("3 days ago") parseable for the feed.
+    /// Requests use the device's preferred language (titles and descriptions in the owner's language,
+    /// e.g. `de-DE`) and region, falling back to `en-US`. `FeedMerger.age(of:)` parses English and
+    /// German relative ages.
     private static func model() -> YouTubeModel {
         let model = YouTubeModel()
-        model.selectedLocale = "en-\(Locale.current.region?.identifier ?? "US")"
+        let language = Locale.preferredLanguages.first
+            .flatMap { Locale(identifier: $0).language.languageCode?.identifier } ?? "en"
+        model.selectedLocale = "\(language)-\(Locale.current.region?.identifier ?? "US")"
         return model
     }
 

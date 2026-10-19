@@ -26,7 +26,17 @@ final class PlaybackController {
         self.history = history
     }
 
+    /// Plays a video from a list; its summary is kept in the watch history (History tab).
+    func play(_ video: VideoSummary) {
+        start(video.id, summary: video)
+    }
+
+    /// Plays by ID only (`-play` launch argument); History shows it once it was played from a list.
     func play(_ id: VideoID) {
+        start(id, summary: nil)
+    }
+
+    private func start(_ id: VideoID, summary: VideoSummary?) {
         let requestedAt = ContinuousClock.now
         task?.cancel()
         clearTask?.cancel()
@@ -38,6 +48,7 @@ final class PlaybackController {
                 status = .idle
                 session = PlayerSession(
                     source: PlaybackSource(stream: stream),
+                    video: summary,
                     sponsorBlock: sponsorBlock,
                     history: history,
                     requestedAt: requestedAt,

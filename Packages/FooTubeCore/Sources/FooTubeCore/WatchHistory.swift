@@ -10,13 +10,24 @@ public struct WatchEntry: Codable, Hashable, Sendable {
     public let updatedAt: Date
     /// Reached 90 % or the end at some point; stays set when re-watching.
     public let watched: Bool
+    /// Title, channel and thumbnail for listing the history; nil for entries stored before
+    /// summaries were recorded.
+    public let video: VideoSummary?
 
-    public init(videoID: VideoID, position: Double, duration: Double, updatedAt: Date, watched: Bool) {
+    public init(
+        videoID: VideoID,
+        position: Double,
+        duration: Double,
+        updatedAt: Date,
+        watched: Bool,
+        video: VideoSummary? = nil,
+    ) {
         self.videoID = videoID
         self.position = position
         self.duration = duration
         self.updatedAt = updatedAt
         self.watched = watched
+        self.video = video
     }
 
     /// Fraction watched, 0...1; 1 once watched.
@@ -69,6 +80,7 @@ public struct WatchHistory {
 
     /// Saves the playback position and moves the video to the front of the history, dropping the
     /// oldest entries beyond `capacity`. `reachedEnd` marks the video watched regardless of position.
+    /// `video` replaces the stored summary; nil keeps the previous one.
     /// Returns nil (and stores nothing) without a finite, positive duration, e.g. for live streams.
     @discardableResult
     public func record(
@@ -77,6 +89,7 @@ public struct WatchHistory {
         duration: Double,
         reachedEnd: Bool = false,
         at date: Date = .now,
+        video: VideoSummary? = nil,
     ) throws -> WatchEntry? {
         guard duration.isFinite, duration > 0, position.isFinite else { return nil }
         let clamped = reachedEnd ? duration : min(max(position, 0), duration)
@@ -88,6 +101,7 @@ public struct WatchHistory {
             duration: duration,
             updatedAt: date,
             watched: (previous?.watched ?? false) || reachedEnd || clamped >= duration * Self.watchedFraction,
+            video: video ?? previous?.video,
         )
         list.insert(entry, at: 0)
         try defaults.set(JSONEncoder().encode(Array(list.prefix(Self.capacity))), forKey: key)

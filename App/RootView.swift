@@ -4,7 +4,7 @@ import SwiftUI
 /// Tabs plus the shared full-screen player and resolve/failure banner.
 struct RootView: View {
     enum TabID: Hashable {
-        case subscriptions, search, play
+        case subscriptions, search, watchLater, history
     }
 
     let catalog: any Catalog
@@ -13,22 +13,28 @@ struct RootView: View {
     @State var feed: FeedModel
     @State private var didAutoplay = false
     @State private var selectedTab: TabID = .subscriptions
-    /// Bumped when the user goes up to the tab bar and comes back into the Search tab; SearchView
-    /// then clears the query and results so focus lands on the search keyboard.
+    /// Navigation path (pushed channel pages) of each tab.
+    @State private var paths: [TabID: [ChannelRef]] = [:]
+    /// Bumped when the user returns from the tab bar into the Search tab; SearchView then clears
+    /// the query, results and its path so focus lands on the search keyboard.
     @State private var searchResets = 0
     @State private var focusIsInTabBar = false
-    @State private var searchContentVisited = false
+    /// Tabs whose content had focus before; the first visit (launch, tab switch) is not a "return".
+    @State private var visitedTabs: Set<TabID> = []
 
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Subscriptions", systemImage: "person.2", value: .subscriptions) {
-                SubscriptionsView(catalog: catalog)
+                SubscriptionsView(catalog: catalog, path: path(.subscriptions))
             }
             Tab("Search", systemImage: "magnifyingglass", value: .search, role: .search) {
-                SearchView(catalog: catalog, resetToken: searchResets)
+                SearchView(catalog: catalog, resetToken: searchResets, path: path(.search))
             }
-            Tab("Play", systemImage: "play.rectangle", value: .play) {
-                HomeView()
+            Tab("Watch Later", systemImage: "clock", value: .watchLater) {
+                WatchLaterView(catalog: catalog, path: path(.watchLater))
+            }
+            Tab("History", systemImage: "clock.arrow.circlepath", value: .history) {
+                HistoryView(catalog: catalog, path: path(.history))
             }
         }
         .environment(playback)
@@ -82,23 +88,32 @@ struct RootView: View {
         }
     }
 
-    /// "Choose Search again" = focus goes up into the tab bar and comes back down into the Search tab.
-    /// tvOS offers no API to focus a `searchable` field (`searchFocused`, `searchable(isPresented:)`
-    /// are unavailable) and re-selecting the current tab does not call the selection binding, so the
-    /// focus system is observed instead. Clearing the search leaves the keyboard as the only
-    /// focusable content, so focus lands on it.
+    /// Returning from the tab bar into a tab = "choose it again": the tab goes back to its root, and
+    /// Search additionally clears its query (Apple's tab bar convention: reselecting a tab returns to
+    /// its top level). tvOS calls no selection binding when the current tab is chosen again and has
+    /// no API to focus a `searchable` field (`searchFocused`, `searchable(isPresented:)` are
+    /// unavailable), so the focus system is observed instead. A cleared search leaves the keyboard
+    /// as the only focusable content, so focus lands on it.
     private func focusMoved(_ note: Notification) {
-        // Updates without a focused view (launch, scene changes) are neither tab bar nor content.
+        // Updates without a focused item (launch, scene changes) are neither tab bar nor content.
+        // SwiftUI buttons are focus items but not UIViews; only the tab bar is UIKit.
         guard let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
-              let view = context.nextFocusedItem as? UIView else { return }
-        let nowInTabBar = Self.isInTabBar(view)
+              let item = context.nextFocusedItem else { return }
+        let nowInTabBar = (item as? UIView).map(Self.isInTabBar) ?? false
         defer { focusIsInTabBar = nowInTabBar }
-        guard !nowInTabBar, selectedTab == .search else { return }
-        // The first time focus enters Search content (app launch, `-search` hook) is not "again".
-        if focusIsInTabBar, searchContentVisited {
-            searchResets += 1
+        guard !nowInTabBar else { return }
+        if focusIsInTabBar, visitedTabs.contains(selectedTab) {
+            if selectedTab == .search {
+                searchResets += 1
+            } else {
+                paths[selectedTab] = []
+            }
         }
-        searchContentVisited = true
+        visitedTabs.insert(selectedTab)
+    }
+
+    private func path(_ tab: TabID) -> Binding<[ChannelRef]> {
+        Binding(get: { paths[tab] ?? [] }, set: { paths[tab] = $0 })
     }
 
     private static func isInTabBar(_ view: UIView) -> Bool {

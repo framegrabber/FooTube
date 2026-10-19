@@ -2,13 +2,13 @@ import FooTubeCore
 import SwiftUI
 
 /// Latest uploads from subscribed channels (stored on this device), with a sidebar of the channels
-/// to filter the feed by one of them and open its full channel page.
+/// to filter the feed by one of them and open its full channel page. The tab owner holds `path`.
 struct SubscriptionsView: View {
     let catalog: any Catalog
+    @Binding var path: [ChannelRef]
 
     @Environment(SubscriptionsModel.self) private var subscriptions
     @Environment(FeedModel.self) private var feed
-    @State private var path: [ChannelRef] = []
     /// Sidebar selection; nil is "All".
     @State private var selectedID: String?
 
@@ -73,7 +73,7 @@ struct SubscriptionsView: View {
             .padding(.vertical, 80)
             .padding(.horizontal, 60)
         }
-        .scrollClipDisabled() // focused cards scale past the scroll view's edges
+        .scrollClipDisabled() // focused cards lift past the scroll view's edges
     }
 
     private var header: some View {
@@ -118,13 +118,9 @@ private struct ChannelSidebar: View {
                     SidebarRow(title: subscription.name, isSelected: selectedID == subscription.id) {
                         selectedID = subscription.id
                     } icon: {
-                        AsyncImage(url: subscription.avatar) { image in
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Color.gray.opacity(0.2)
-                        }
-                        .frame(width: 64, height: 64)
-                        .clipShape(.circle)
+                        RemoteImage(url: subscription.avatar, size: CGSize(width: 64, height: 64))
+                            .frame(width: 64, height: 64)
+                            .clipShape(.circle)
                     }
                 }
             }

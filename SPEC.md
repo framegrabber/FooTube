@@ -11,6 +11,7 @@ A private, sideloaded tvOS app for one household that plays YouTube videos witho
 3. As the user, I search YouTube and play a result; I open a channel and browse its uploads.
 4. As the user, sponsor segments are skipped automatically; other SponsorBlock segments show a skip button.
 5. As the user, I subscribe to channels (stored only on the device) and see a feed of their latest uploads.
+6. As the user, I find videos I watched in a History tab and save videos for later (long press → Watch Later) in a Watch Later tab; playback resumes where I stopped.
 
 ## Target Hardware Constraints
 Source: [Apple TV HD technical specifications](https://support.apple.com/en-us/111928), [tvOS 27 drops Apple TV HD](https://www.macrumors.com/2026/09/14/tvos-27-drops-support-for-two-apple-tv-models).

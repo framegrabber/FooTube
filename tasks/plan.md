@@ -108,7 +108,7 @@ Research done first (HIG tab bars, Apple's tvOS media-catalog sample, User Manag
 - **UI** (`VideoGrid.swift`, `ChannelView.swift`, `SearchView.swift`, `SubscriptionsView.swift`, new `RemoteImage.swift`, `WatchLaterModel.swift`, `WatchLaterView.swift`, `HistoryView.swift`, `WatchHistoryModel.swift`): G1, G3, G4/G5 screens + context menu.
 - **Lead** (`RootView.swift`, `FooTubeApp.swift`, `PlaybackController.swift`, `PlayerSession.swift`, removal of `HomeView.swift`/`TestVideos.swift`, UI tests): G2, G7, integration.
 - Deferred: per-Apple-TV-user data (needs paid program: Personal Teams can't sign User Management — verified), iPhone/iPad + sync (estimate given to owner).
-- [ ] G1–G8 done and verified
+- [x] G1–G7 done and verified in the Simulator (G8 deferred)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |

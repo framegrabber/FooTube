@@ -20,7 +20,28 @@ struct FeedTests {
         #expect(FeedMerger.age(of: text) == seconds)
     }
 
-    @Test(arguments: ["", "Scheduled for 10/20/26", "vor 3 Tagen", "LIVE"])
+    @Test(arguments: [
+        ("vor 30 Sekunden", 30),
+        ("vor 1 Sekunde", 1),
+        ("vor 5 Minuten", 300),
+        ("vor 1 Stunde", 3600),
+        ("vor 16 Stunden", 57600),
+        ("vor 1 Tag", 86400),
+        ("vor 7 Tagen", 604_800),
+        ("vor 2 Wochen", 1_209_600),
+        ("vor 1 Monat", 2_592_000),
+        ("vor 3 Monaten", 7_776_000),
+        ("vor 1 Jahr", 31_536_000),
+        ("vor 2 Jahren", 63_072_000),
+        ("vor 2 Tagen gestreamt", 172_800),
+        ("Gestreamt vor 2 Stunden", 7200),
+        ("Premiere vor 6 Tagen", 518_400),
+    ] as [(String, Double)])
+    func `parses German relative ages`(text: String, seconds: Double) {
+        #expect(FeedMerger.age(of: text) == seconds)
+    }
+
+    @Test(arguments: ["", "Scheduled for 10/20/26", "Geplant für 20.10.26", "vor", "vor drei Tagen", "LIVE"])
     func `unknown age text yields nil`(text: String) {
         #expect(FeedMerger.age(of: text) == nil)
     }
