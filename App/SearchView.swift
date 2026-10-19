@@ -2,12 +2,10 @@ import FooTubeCore
 import SwiftUI
 
 /// YouTube search with paging: matching channels in a row above the videos; channels open in the same
-/// navigation stack, whose `path` the tab owner holds. A new `resetToken` (the Search tab was chosen
-/// again) starts over: query, results and opened channels are cleared, so the search keyboard is the
-/// only thing left to focus.
+/// navigation stack, whose `path` the tab owner holds. Query and results survive tab switches and
+/// returns from the tab bar; the user starts a new search with the keyboard.
 struct SearchView: View {
     let catalog: any Catalog
-    var resetToken = 0
     @Binding var path: [ChannelRef]
 
     @State private var query = ""
@@ -48,7 +46,6 @@ struct SearchView: View {
                 ChannelView(catalog: catalog, channel: channel)
             }
         }
-        .onChange(of: resetToken) { reset() }
         .onAppear {
             // Debug/test hooks: `-search <query>` and `-channel <channelID>` launch arguments, once per launch.
             guard !didApplyLaunchArguments else { return }
@@ -60,18 +57,6 @@ struct SearchView: View {
                 path.append(ChannelRef(id: id, name: nil))
             }
         }
-    }
-
-    /// A running search or page load is discarded: `search` checks cancellation (the query changed)
-    /// and `loadMore` checks `searchedQuery`.
-    private func reset() {
-        query = ""
-        searchedQuery = nil
-        results = []
-        channels = []
-        next = nil
-        error = nil
-        path = []
     }
 
     private func search(_ text: String) async {

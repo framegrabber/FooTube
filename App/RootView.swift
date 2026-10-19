@@ -15,9 +15,6 @@ struct RootView: View {
     @State private var selectedTab: TabID = .subscriptions
     /// Navigation path (pushed channel pages) of each tab.
     @State private var paths: [TabID: [ChannelRef]] = [:]
-    /// Bumped when the user returns from the tab bar into the Search tab; SearchView then clears
-    /// the query, results and its path so focus lands on the search keyboard.
-    @State private var searchResets = 0
     @State private var focusIsInTabBar = false
     /// Tabs whose content had focus before; the first visit (launch, tab switch) is not a "return".
     @State private var visitedTabs: Set<TabID> = []
@@ -28,7 +25,7 @@ struct RootView: View {
                 SubscriptionsView(catalog: catalog, path: path(.subscriptions))
             }
             Tab("Search", systemImage: "magnifyingglass", value: .search, role: .search) {
-                SearchView(catalog: catalog, resetToken: searchResets, path: path(.search))
+                SearchView(catalog: catalog, path: path(.search))
             }
             Tab("Watch Later", systemImage: "clock", value: .watchLater) {
                 WatchLaterView(catalog: catalog, path: path(.watchLater))
@@ -75,7 +72,7 @@ struct RootView: View {
             didAutoplay = true
             let defaults = UserDefaults.standard
             if defaults.string(forKey: "search") != nil || defaults.string(forKey: "channel") != nil {
-                selectedTab = .search // direct assignment: must not trigger the Search reset
+                selectedTab = .search
             }
             for id in defaults.string(forKey: "subscribe")?.split(separator: ",") ?? [] where !subscriptions.isSubscribed(String(id)) {
                 if let page = try? await catalog.channel(String(id)) {
@@ -88,12 +85,10 @@ struct RootView: View {
         }
     }
 
-    /// Returning from the tab bar into a tab = "choose it again": the tab goes back to its root, and
-    /// Search additionally clears its query (Apple's tab bar convention: reselecting a tab returns to
-    /// its top level). tvOS calls no selection binding when the current tab is chosen again and has
-    /// no API to focus a `searchable` field (`searchFocused`, `searchable(isPresented:)` are
-    /// unavailable), so the focus system is observed instead. A cleared search leaves the keyboard
-    /// as the only focusable content, so focus lands on it.
+    /// Returning from the tab bar into a tab = "choose it again": the tab goes back to its root
+    /// (Apple's tab bar convention). Search keeps its query and results, so overshooting from the
+    /// search keyboard to the tab bar loses nothing. tvOS calls no selection binding when the current
+    /// tab is chosen again, so the focus system is observed instead.
     private func focusMoved(_ note: Notification) {
         // Updates without a focused item (launch, scene changes) are neither tab bar nor content.
         // SwiftUI buttons are focus items but not UIViews; only the tab bar is UIKit.
@@ -103,11 +98,7 @@ struct RootView: View {
         defer { focusIsInTabBar = nowInTabBar }
         guard !nowInTabBar else { return }
         if focusIsInTabBar, visitedTabs.contains(selectedTab) {
-            if selectedTab == .search {
-                searchResets += 1
-            } else {
-                paths[selectedTab] = []
-            }
+            paths[selectedTab] = []
         }
         visitedTabs.insert(selectedTab)
     }

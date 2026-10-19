@@ -69,18 +69,18 @@ final class FocusNavigationUITests: XCTestCase {
         }
     }
 
-    /// F9: going back up to the tab bar and choosing Search again clears the previous search.
-    func testChoosingSearchAgainResetsTheSearch() {
+    /// Going up from the results past the keyboard to the tab bar and back keeps the search.
+    func testReturningFromTabBarKeepsTheSearch() {
         let app = launch(["-search", "blender open movie"])
         let result = app.buttons.matching(videoCard).firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 20))
         XCTAssertTrue(move(.down, until: videoCard, in: app), "no result focused; focus on \(focused(app).debugDescription.prefix(300)); results: \(app.buttons.matching(videoCard).count)")
 
         press(.up, times: 8) // results → channels → keyboard → tab bar (extra presses are no-ops there)
-        press(.select) // choose Search
+        press(.down)
         usleep(1_500_000)
-        attachScreenshot("after choosing Search again")
-        XCTAssertFalse(app.buttons.matching(videoCard).firstMatch.exists, "previous results still shown")
+        attachScreenshot("after returning from the tab bar")
+        XCTAssertTrue(app.buttons.matching(videoCard).firstMatch.exists, "search results were cleared")
     }
 
     /// F11: long-pressing a card shows "Open <channel>", which opens the channel page.
@@ -107,7 +107,7 @@ final class FocusNavigationUITests: XCTestCase {
     }
 
     /// G2: on a channel page pushed in the Search tab, going up to the tab bar and back down returns
-    /// the tab to its root (and clears the search).
+    /// the tab to its root.
     func testReturningFromTabBarPopsChannelPage() {
         let app = launch(["-channel", blender])
         XCTAssertTrue(app.buttons.matching(subscribeButton).firstMatch.waitForExistence(timeout: 20))
