@@ -15,7 +15,8 @@ struct RootView: View {
     @State private var selectedTab: TabID = .subscriptions
     /// Navigation path (pushed channel pages) of each tab.
     @State private var paths: [TabID: [ChannelRef]] = [:]
-    @State private var focusIsInTabBar = false
+    /// The user moved focus to the tab bar (not tvOS parking it there, see `focusMoved`).
+    @State private var userIsInTabBar = false
     /// Tabs whose content had focus before; the first visit (launch, tab switch) is not a "return".
     @State private var visitedTabs: Set<TabID> = []
 
@@ -46,11 +47,6 @@ struct RootView: View {
         .fullScreenCover(item: $playback.session) { session in
             PlayerView(session: session)
                 .ignoresSafeArea()
-                .overlay(alignment: .topLeading) {
-                    #if DEBUG
-                        DiagnosticsOverlay(session: session)
-                    #endif
-                }
                 .overlay(alignment: .bottomLeading) {
                     if let notice = session.notice {
                         Text(notice)
@@ -94,12 +90,16 @@ struct RootView: View {
         // SwiftUI buttons are focus items but not UIViews; only the tab bar is UIKit.
         guard let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
               let item = context.nextFocusedItem else { return }
-        let nowInTabBar = (item as? UIView).map(Self.isInTabBar) ?? false
-        defer { focusIsInTabBar = nowInTabBar }
-        guard !nowInTabBar else { return }
-        if focusIsInTabBar, visitedTabs.contains(selectedTab) {
+        if (item as? UIView).map(Self.isInTabBar) ?? false {
+            // tvOS parks focus on the tab bar (no previous item) while a pushed page has nothing
+            // focusable yet; moving on into that page is not a return from the tab bar.
+            userIsInTabBar = userIsInTabBar || context.previouslyFocusedItem != nil
+            return
+        }
+        if userIsInTabBar, visitedTabs.contains(selectedTab) {
             paths[selectedTab] = []
         }
+        userIsInTabBar = false
         visitedTabs.insert(selectedTab)
     }
 

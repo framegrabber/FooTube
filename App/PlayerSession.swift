@@ -4,7 +4,7 @@ import Observation
 import os
 
 /// One playback: owns the player, applies SponsorBlock skips, resumes and records the watch
-/// position, and measures what the diagnostics overlay shows.
+/// position, and logs playback metrics (time to first frame, resolution, dropped frames).
 @MainActor
 @Observable
 final class PlayerSession: Identifiable {
@@ -14,10 +14,10 @@ final class PlayerSession: Identifiable {
     let requestedAt: ContinuousClock.Instant
     let resolvedAt: ContinuousClock.Instant
 
-    private(set) var timeToFirstFrame: Duration?
-    private(set) var presentationHeight = 0
-    private(set) var indicatedBitrate = 0.0
-    private(set) var droppedFrames = 0
+    /// Playback metrics for the log lines at first frame and stop.
+    private var timeToFirstFrame: Duration?
+    private var presentationHeight = 0
+    private var droppedFrames = 0
 
     /// Non-sponsor segment the playhead is in; the player shows a skip button for it.
     private(set) var offeredSegment: SkipSegment?
@@ -230,7 +230,6 @@ final class PlayerSession: Identifiable {
         guard let item = player.currentItem else { return }
         presentationHeight = Int(min(item.presentationSize.width, item.presentationSize.height))
         if let event = item.accessLog()?.events.last {
-            indicatedBitrate = event.indicatedBitrate
             droppedFrames = event.numberOfDroppedVideoFrames
         }
     }

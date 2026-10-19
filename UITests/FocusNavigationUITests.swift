@@ -119,6 +119,24 @@ final class FocusNavigationUITests: XCTestCase {
         XCTAssertFalse(app.buttons.matching(subscribeButton).firstMatch.exists, "channel page still shown")
     }
 
+    /// A channel opened from the search results stays open while moving focus around it, so its
+    /// Subscribe button and videos are reachable.
+    func testChannelOpenedFromSearchStaysOpen() {
+        let app = launch(["-search", "brickstory"])
+        let channel = NSPredicate(format: "label CONTAINS[c] 'brickstory' AND NOT (label CONTAINS[c] ' views')")
+        XCTAssertTrue(app.buttons.matching(channel).firstMatch.waitForExistence(timeout: 20), "no channel result")
+        XCTAssertTrue(move(.down, until: channel, in: app), "channel result not focused: \(focused(app).label)")
+        press(.select)
+        let subscribe = app.buttons.matching(subscribeButton).firstMatch
+        XCTAssertTrue(subscribe.waitForExistence(timeout: 20), "channel page did not open")
+        XCTAssertTrue(app.buttons.matching(videoCard).firstMatch.waitForExistence(timeout: 20))
+
+        XCTAssertTrue(move(.down, until: videoCard, in: app), "no video focused on the channel page: \(focused(app).label)")
+        XCTAssertTrue(subscribe.exists, "channel page closed after moving to a video")
+        XCTAssertTrue(move(.up, until: subscribeButton, in: app), "Subscribe not reachable: \(focused(app).label)")
+        XCTAssertTrue(subscribe.exists, "channel page closed after moving to Subscribe")
+    }
+
     /// G1 + G5: subscribing shows the channel (with avatar, see screenshot) in Subscriptions right
     /// away; "Add to Watch Later" from the long-press menu lists the video in Watch Later.
     func testSubscribeAndWatchLaterShowUpImmediately() {
