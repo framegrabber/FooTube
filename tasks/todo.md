@@ -330,6 +330,28 @@ Every task's verification includes `scripts/check.sh task` (see CONSTRAINTS.md) 
 
 ---
 
+## Phase 6: Device feedback (owner, 2026-10-19)
+
+Each item: acceptance = observable on device/Simulator; verification = `scripts/check.sh task` + Simulator (UI test with `XCUIRemote` where focus matters) + owner on device.
+
+| ID | Problem (owner's words, shortened) | Acceptance | Slice |
+|---|---|---|---|
+| F1 | Duration badge text is black on the Apple TV (light appearance) | Badge text white on dark background in light and dark appearance | B1 |
+| F2 | Subscribe button only reachable via the top-right video | From any card in the first row, pressing up focuses Subscribe | B1 |
+| F3 | Members-only videos are listed (Alexandre Chappel `UCe1Aj6VEO299Yq4WkXdoD3Q`) | No members-only videos in channel pages, search, feed | B2 |
+| F4 | Starts with subtitles on and an AI-dubbed audio track | Original audio track and no subtitles by default; user can still pick others | A |
+| F5 | Play position not remembered | Re-opening a partly watched video resumes there (not in first 10 s / last 30 s) | A |
+| F6 | Watched videos not remembered | Cards show progress bar / watched state; persists across relaunch | A (+B1 display) |
+| F7 | Focused card hard to see, lift animation clipped | Focused card scales up with outline/shadow like the home screen, not clipped | B1 |
+| F8 | No app icon | Layered tvOS app icon + top shelf image on the home screen | C |
+| F9 | Stuck on search results; re-choosing Search should reset and focus the input | Selecting Search again clears the query and focuses the keyboard | B2 |
+| F10 | Getting to a channel is awkward | Search results include channels; selecting one opens the channel | B2 |
+| F11 | "Open channel" context menu: white box sticks out of the frame | Context menu preview renders cleanly with the new card style | B1 |
+| F12 | Subscriptions need a sidebar to filter by channel | Sidebar: All + each channel; selection filters the feed | B2 |
+
+---
+
 ## Checkpoint: Complete
 - [ ] SPEC success criteria 1–5 on the Apple TV HD
 - [ ] code-review-and-quality, code-simplification; human sign-off
+- [ ] F1–F12 verified on the Apple TV HD by the owner

@@ -93,6 +93,15 @@ Details in `tasks/todo.md`.
 ### Checkpoint: Complete
 - [ ] SPEC success criteria 1–5 met on the Apple TV HD
 
+### Phase 6: Device feedback (2026-10-19) — details in `tasks/todo.md` F1–F12
+Four parallel slices with disjoint files, integrated and verified by the lead:
+- **Slice A — Playback** (`HLSMasterPlaylist.swift`, new `WatchHistory.swift`, `PlayerSession.swift`, `PlaybackController.swift`, new `App/WatchHistoryModel.swift`, `FooTubeApp.swift`): F4 original audio + subtitles off, F5 resume position, F6 watched history.
+- **Slice B1 — Cards & channel page** (`VideoGrid.swift`, `ChannelView.swift`): F1 duration badge color, F7 focus effect, F11 context menu look, F2 subscribe button reachable, plus watch progress on cards (reads Slice A's `WatchHistoryModel`).
+- **Slice B2 — Search & subscriptions** (`Catalog.swift`, `SearchView.swift`, `SubscriptionsView.swift`, `RootView.swift`): F3 hide members-only, F9 search reset, F10 channels in search, F12 sidebar.
+- **Slice C — App icon** (`App/Assets.xcassets`, `project.yml`, `scripts/make-icon.swift`): F8.
+- **Lead:** integration, `scripts/check.sh task`, Simulator verification incl. a UI test target driving the Siri Remote (`XCUIRemote`) for focus behaviour (F2, F7, F9), then device install.
+- [ ] F1–F12 done and verified
+
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |---|---|---|
