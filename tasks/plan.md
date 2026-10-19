@@ -100,7 +100,7 @@ Four parallel slices with disjoint files, integrated and verified by the lead:
 - **Slice B2 — Search & subscriptions** (`Catalog.swift`, `SearchView.swift`, `SubscriptionsView.swift`, `RootView.swift`): F3 hide members-only, F9 search reset, F10 channels in search, F12 sidebar.
 - **Slice C — App icon** (`App/Assets.xcassets`, `project.yml`, `scripts/make-icon.swift`): F8.
 - **Lead:** integration, `scripts/check.sh task`, Simulator verification incl. a UI test target driving the Siri Remote (`XCUIRemote`) for focus behaviour (F2, F7, F9), then device install.
-- [ ] F1–F12 done and verified
+- [x] F1–F12 done and verified in the Simulator (device check by owner pending)
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |

@@ -89,7 +89,7 @@ Naming: types `UpperCamelCase`, no `Manager`/`Helper` suffixes; one primary type
 - **Framework:** Swift Testing (`@Test`, `#expect`) in `FooTubeCoreTests`.
 - **Unit (default, offline):** ID/URL parsing, stream selection rules (codec, resolution caps), SponsorBlock hashing and filtering, feed merge/sort, decoding from recorded fixtures. Run in `swift test` on every change.
 - **Network (opt-in):** gated by `FOOTUBE_NETWORK_TESTS=1`; hit real YouTube/SponsorBlock with a fixed list of test IDs. Run at task end and when extraction is suspected broken. Never required for CI-style green.
-- **UI:** no UI test target. Verified by Simulator screenshots/logs and, for playback and performance, by the human on the Apple TV, results recorded in `tasks/results.md`.
+- **UI:** `UITests/` (XCUITest) drives the Siri Remote with `XCUIRemote` for focus/navigation behaviour (Subscribe reachable, search reset, context menu, sidebar); needs network, run on demand, not part of `scripts/check.sh`. Visuals via Simulator screenshots; playback and performance by the human on the Apple TV, results in `tasks/results.md`.
 - **Coverage:** no numeric target yet; set in `CONSTRAINTS.md`.
 
 ## Boundaries

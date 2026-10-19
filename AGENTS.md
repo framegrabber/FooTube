@@ -18,6 +18,7 @@ Read CONSTRAINTS.md before writing code. Do not weaken it to make a change pass.
 | Debug launch arguments | `scripts/run-sim.sh -play <id or URL>` (`RootView`), `-subscribe <id,id>` (`RootView`), `-search <query>`, `-channel <channelID>` (`SearchView`, Search tab); once per launch; also work with `devicectl … process launch` |
 | Build + run in Simulator | `scripts/run-sim.sh` |
 | Build + run on the Apple TV | `scripts/run-device.sh [launch args]` (paired Apple TV "Wohnzimmer"; `FOOTUBE_DEVICE=<name or id>` to choose; free team → rebuild every 7 days) |
+| UI tests (remote-driven focus checks, network) | `xcodebuild test -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS Simulator,name=Apple TV' -resultBundlePath /tmp/ui.xcresult` (screenshots: `xcrun xcresulttool export attachments --path /tmp/ui.xcresult --output-path <dir>`) |
 | Screenshot | `xcrun simctl io "Apple TV" screenshot <path>.png` |
 | Logs | `xcrun simctl spawn "Apple TV" log stream --predicate 'subsystem == "com.felixrothballer.FooTube"'` |
 | Format | `swiftformat .` |
