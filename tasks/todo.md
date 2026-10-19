@@ -349,6 +349,19 @@ Each item: acceptance = observable on device/Simulator; verification = `scripts/
 | F11 | "Open channel" context menu: white box sticks out of the frame | Context menu preview renders cleanly with the new card style | B1 |
 | F12 | Subscriptions need a sidebar to filter by channel | Sidebar: All + each channel; selection filters the feed | B2 |
 
+## Phase 7: Device feedback round 2 (owner, 2026-10-19)
+
+| ID | Problem | Decision / acceptance |
+|---|---|---|
+| G1 | New subscriptions show empty avatars until app restart | Cause (likely): `AsyncImage` loads cancelled while the Subscriptions tab is offscreen never retry. Own `RemoteImage` (URLCache + ImageIO downsampling, reloads on appear) everywhere. Avatars appear right after subscribing |
+| G2 | Menu on tab bar quits the app; hard to get back to top level from a channel page; Search-reset should also apply on channel pages | HIG: tab bar stays visible, Menu pops a level, Menu at a tab's root moves focus to the tab bar, Menu on the tab bar exits (system). Returning from the tab bar into a tab pops it to its root (Search also clears). Per-tab navigation paths owned by RootView |
+| G3 | Black outline and scaled text look bad; want home-screen style | Apple's tvOS lockup: `.buttonStyle(.borderless)` + `.hoverEffect(.highlight)` on the thumbnail (lift, specular highlight, gimbal tilt), `.scrollClipDisabled()`. Custom CardButtonStyle removed |
+| G4 | History tab | Tab listing watched / partly watched videos, newest first (history entries store the video summary) |
+| G5 | Watch Later via long press | Context menu "Add to Watch Later" / "Remove from Watch Later"; Watch Later tab |
+| G6 | German channels show English titles | InnerTube requests use the device language and region (hl/gl); relative ages parsed in English and German |
+| G7 | Play tab redundant | Removed (and the MVP test list); `-play` launch argument stays |
+| G8 | Profiles per Apple TV user | Deferred until the paid program (owner's decision) |
+
 ---
 
 ## Checkpoint: Complete

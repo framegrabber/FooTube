@@ -102,6 +102,14 @@ Four parallel slices with disjoint files, integrated and verified by the lead:
 - **Lead:** integration, `scripts/check.sh task`, Simulator verification incl. a UI test target driving the Siri Remote (`XCUIRemote`) for focus behaviour (F2, F7, F9), then device install.
 - [x] F1–F12 done and verified in the Simulator (device check by owner pending)
 
+### Phase 7: Device feedback round 2 (2026-10-19) — details in `tasks/todo.md` G1–G8
+Research done first (HIG tab bars, Apple's tvOS media-catalog sample, User Management docs). Slices:
+- **Core** (`Catalog.swift`, `Feed.swift`, `WatchHistory.swift`, new `WatchLater.swift`, tests): G6 device-language titles + German relative ages, G4/G5 stores.
+- **UI** (`VideoGrid.swift`, `ChannelView.swift`, `SearchView.swift`, `SubscriptionsView.swift`, new `RemoteImage.swift`, `WatchLaterModel.swift`, `WatchLaterView.swift`, `HistoryView.swift`, `WatchHistoryModel.swift`): G1, G3, G4/G5 screens + context menu.
+- **Lead** (`RootView.swift`, `FooTubeApp.swift`, `PlaybackController.swift`, `PlayerSession.swift`, removal of `HomeView.swift`/`TestVideos.swift`, UI tests): G2, G7, integration.
+- Deferred: per-Apple-TV-user data (needs paid program: Personal Teams can't sign User Management — verified), iPhone/iPad + sync (estimate given to owner).
+- [ ] G1–G8 done and verified
+
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |---|---|---|
