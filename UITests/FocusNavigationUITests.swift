@@ -123,7 +123,8 @@ final class FocusNavigationUITests: XCTestCase {
     /// Subscribe button and videos are reachable.
     func testChannelOpenedFromSearchStaysOpen() {
         let app = launch(["-search", "brickstory"])
-        let channel = NSPredicate(format: "label CONTAINS[c] 'brickstory' AND NOT (label CONTAINS[c] ' views')")
+        // The channel tile shows the subscriber count; the suggestion row above has "brickstory" too.
+        let channel = NSPredicate(format: "label CONTAINS[c] 'brickstory' AND label CONTAINS[c] 'subscribers'")
         XCTAssertTrue(app.buttons.matching(channel).firstMatch.waitForExistence(timeout: 20), "no channel result")
         XCTAssertTrue(move(.down, until: channel, in: app), "channel result not focused: \(focused(app).label)")
         press(.select)
