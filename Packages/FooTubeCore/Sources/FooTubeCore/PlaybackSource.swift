@@ -37,7 +37,7 @@ public final class PlaybackSource: Identifiable, Sendable {
 }
 
 private final class PlaylistLoader: NSObject, AVAssetResourceLoaderDelegate, Sendable {
-    static let queue = DispatchQueue(label: "com.felixrothballer.FooTube.playlist-loader")
+    static let queue = DispatchQueue(label: "\(AppInfo.logSubsystem).playlist-loader")
 
     let url: URL
     let playlist: Data

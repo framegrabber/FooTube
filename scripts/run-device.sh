@@ -5,7 +5,6 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-BUNDLE="com.felixrothballer.FooTube"
 devices="$(mktemp)"
 trap 'rm -f "$devices"' EXIT
 xcrun devicectl list devices --json-output "$devices" >/dev/null 2>&1
@@ -19,10 +18,16 @@ DEST="platform=tvOS,id=$(xcrun devicectl device info details --device "$DEVICE" 
 [[ "$DEST" != "platform=tvOS,id=" ]] || DEST="platform=tvOS,name=$NAME"
 
 xcodegen generate --quiet
-xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$DEST" -allowProvisioningUpdates build | xcbeautify --quiet
+settings="$(xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$DEST" -showBuildSettings 2>/dev/null)"
+setting() { awk -F' = ' -v key=" $1" '$1 ~ key"$" {print $2; exit}' <<<"$settings"; }
+[[ -n "$(setting DEVELOPMENT_TEAM)" ]] || {
+  echo "No signing team: copy Config/Signing.local.xcconfig.example to Config/Signing.local.xcconfig and set your team (see README)." >&2
+  exit 1
+}
+BUNDLE="$(setting PRODUCT_BUNDLE_IDENTIFIER)"
+products="$(setting BUILT_PRODUCTS_DIR)"
 
-products="$(xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$DEST" -showBuildSettings 2>/dev/null |
-  awk -F' = ' '/ BUILT_PRODUCTS_DIR = /{print $2; exit}')"
+xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$DEST" -allowProvisioningUpdates build | xcbeautify --quiet
 
 xcrun devicectl device install app --device "$DEVICE" "$products/FooTube.app" >/dev/null
 xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE" "$@"

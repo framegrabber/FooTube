@@ -40,7 +40,7 @@ Network tests:      FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/F
 Simulator build:    xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS Simulator,name=Apple TV' build | xcbeautify
 Simulator run:      scripts/run-sim.sh   (build, install, launch on "Apple TV")
 Screenshot:         xcrun simctl io booted screenshot <path>.png
-Logs:               xcrun simctl spawn booted log stream --predicate 'subsystem == "com.felixrothballer.FooTube"'
+Logs:               xcrun simctl spawn booted log stream --predicate 'subsystem ENDSWITH ".FooTube"'
 Device run:         scripts/run-device.sh [launch args]   (build with -allowProvisioningUpdates, devicectl install + launch)
 Format:             swiftformat .
 LSP config:         xcode-build-server config -project FooTube.xcodeproj -scheme FooTube
@@ -49,15 +49,19 @@ Reference check:    yt-dlp --extractor-args "youtube:player_client=android_vr" -
 
 ## Project Structure
 ```
-project.yml                  → XcodeGen definition (app target, signing, deployment target)
+project.yml                  → XcodeGen definition (app target, deployment target)
+Config/                      → Signing.xcconfig (+ gitignored Signing.local.xcconfig: team, bundle ID prefix)
 App/                         → SwiftUI views and tvOS-specific glue only (no networking, no parsing)
 Packages/FooTubeCore/        → Logic: stream resolution, ID parsing, catalog, SponsorBlock, subscriptions
   Sources/FooTubeCore/
   Tests/FooTubeCoreTests/    → Unit tests (offline, fixtures) + opt-in network tests
   Tests/FooTubeCoreTests/Fixtures/ → Recorded JSON responses
-Packages/InnerTubeKit/       → Vendored b5i/YouTubeKit, renamed (Phase 3 only)
+Packages/InnerTubeKit/       → Vendored b5i/YouTubeKit, renamed
+UITests/                     → Remote-driven focus/navigation tests
+scripts/                     → check.sh, floor-guard.mjs, run-sim.sh, run-device.sh, make-icon.swift
+docs/                        → research notes, README screenshots
 tasks/                       → plan.md, todo.md, results.md (test runs on device)
-SPEC.md, CONSTRAINTS.md, AGENTS.md
+README.md, SPEC.md, CONSTRAINTS.md, AGENTS.md, LICENSE
 ```
 
 ## Code Style

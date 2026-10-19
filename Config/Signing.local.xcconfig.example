@@ -1,0 +1,6 @@
+// Your Apple developer team ID: Xcode > Settings > Accounts > your Apple ID > team, or
+// developer.apple.com > Account > Membership. A free Personal Team works.
+DEVELOPMENT_TEAM = ABCDE12345
+
+// Reverse-DNS prefix you own or make up; bundle IDs must be unique per team.
+FOOTUBE_BUNDLE_ID_PREFIX = com.yourname

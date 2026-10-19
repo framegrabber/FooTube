@@ -1,12 +1,14 @@
 name: FooTube
 options:
-  bundleIdPrefix: com.felixrothballer
   deploymentTarget:
     tvOS: "18.0"
   createIntermediateGroups: true
+# Team and bundle ID prefix: Config/Signing.xcconfig (+ your Config/Signing.local.xcconfig).
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
 settings:
   base:
-    DEVELOPMENT_TEAM: X94768F5PD
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "6.0"
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
@@ -24,7 +26,7 @@ targets:
       - package: FooTubeCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.felixrothballer.FooTube
+        PRODUCT_BUNDLE_IDENTIFIER: $(FOOTUBE_BUNDLE_ID_PREFIX).FooTube
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: FooTube
         MARKETING_VERSION: "0.1.0"
@@ -42,6 +44,6 @@ targets:
       - target: FooTube
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.felixrothballer.FooTubeUITests
+        PRODUCT_BUNDLE_IDENTIFIER: $(FOOTUBE_BUNDLE_ID_PREFIX).FooTubeUITests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: FooTube
