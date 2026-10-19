@@ -17,6 +17,7 @@ Read CONSTRAINTS.md before writing code. Do not weaken it to make a change pass.
 | Network tests (real YouTube) | `FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore` |
 | Debug launch arguments | `scripts/run-sim.sh -play <id or URL>` (`RootView`), `-subscribe <id,id>` (`RootView`), `-search <query>`, `-channel <channelID>` (`SearchView`, Search tab); once per launch; also work with `devicectl … process launch` |
 | Build + run in Simulator | `scripts/run-sim.sh` |
+| Build + run on the Apple TV | `scripts/run-device.sh [launch args]` (paired Apple TV "Wohnzimmer"; `FOOTUBE_DEVICE=<name or id>` to choose; free team → rebuild every 7 days) |
 | Screenshot | `xcrun simctl io "Apple TV" screenshot <path>.png` |
 | Logs | `xcrun simctl spawn "Apple TV" log stream --predicate 'subsystem == "com.felixrothballer.FooTube"'` |
 | Format | `swiftformat .` |

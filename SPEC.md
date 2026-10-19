@@ -39,8 +39,7 @@ Simulator build:    xcodebuild -project FooTube.xcodeproj -scheme FooTube -desti
 Simulator run:      scripts/run-sim.sh   (build, install, launch on "Apple TV")
 Screenshot:         xcrun simctl io booted screenshot <path>.png
 Logs:               xcrun simctl spawn booted log stream --predicate 'subsystem == "com.felixrothballer.FooTube"'
-Device build:       xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS,id=<udid>' build | xcbeautify
-Device install/run: xcrun devicectl device install app --device <udid> <app>; xcrun devicectl device process launch --device <udid> com.felixrothballer.FooTube
+Device run:         scripts/run-device.sh [launch args]   (build with -allowProvisioningUpdates, devicectl install + launch)
 Format:             swiftformat .
 LSP config:         xcode-build-server config -project FooTube.xcodeproj -scheme FooTube
 Reference check:    yt-dlp --extractor-args "youtube:player_client=android_vr" -F <videoID>
