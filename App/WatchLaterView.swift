@@ -11,21 +11,30 @@ struct WatchLaterView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 48) {
-                    if let error = watchLater.lastError {
-                        Text(error).foregroundStyle(.red)
+            Group {
+                if watchLater.items.isEmpty {
+                    ContentUnavailableView {
+                        Label("Nothing Saved", systemImage: "clock")
+                    } description: {
+                        Text("Press and hold a video and choose Add to Watch Later.")
+                    } actions: {
+                        if let error = watchLater.lastError {
+                            ErrorMessage(message: error)
+                        }
                     }
-                    if watchLater.items.isEmpty {
-                        Text("Nothing saved yet. Press and hold a video and choose Add to Watch Later.")
-                            .foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 48) {
+                            if let error = watchLater.lastError {
+                                ErrorMessage(message: error)
+                            }
+                            VideoGrid(videos: watchLater.items, onOpenChannel: { path.append($0) })
+                        }
+                        .padding(80)
                     }
-                    VideoGrid(videos: watchLater.items, onOpenChannel: { path.append($0) })
+                    .scrollClipDisabled() // focused lockups lift past the scroll view's edges
                 }
-                .padding(80)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .scrollClipDisabled() // focused lockups lift past the scroll view's edges
             .navigationDestination(for: ChannelRef.self) { channel in
                 ChannelView(catalog: catalog, channel: channel)
             }

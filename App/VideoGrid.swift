@@ -39,7 +39,7 @@ private struct VideoGridCell: View {
     var body: some View {
         card.contextMenu {
             if let channel = video.channel, let onOpenChannel {
-                Button("Open \(channel.name ?? "Channel")", systemImage: "person.crop.rectangle") {
+                Button("Open \(channel.name ?? String(localized: "Channel"))", systemImage: "person.crop.rectangle") {
                     onOpenChannel(channel)
                 }
             }
@@ -71,6 +71,15 @@ private struct VideoGridCell: View {
         }
         .buttonStyle(.borderless)
         .buttonBorderShape(.roundedRectangle(radius: VideoThumbnail.cornerRadius))
+        .accessibilityValue(progressDescription)
+    }
+
+    /// The progress stripe for VoiceOver; "Watched" is already a visible label.
+    private var progressDescription: Text {
+        guard !watchHistory.isWatched(video.id), let fraction = watchHistory.progress(for: video.id) else {
+            return Text(verbatim: "")
+        }
+        return Text("\(fraction, format: .percent.precision(.fractionLength(0))) watched")
     }
 
     private var thumbnail: VideoThumbnail {
@@ -98,7 +107,8 @@ struct VideoCard: View {
                 .font(.callout)
                 .foregroundStyle(.primary)
                 .lineLimit(2, reservesSpace: true)
-            Text([video.channel?.name, video.viewCount, video.published].compactMap(\.self).joined(separator: " · "))
+            // Date first: in narrow columns the end of the line is cut, and the feed is sorted by date.
+            Text([video.published, video.channel?.name, video.viewCount].compactMap(\.self).joined(separator: " · "))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -157,6 +167,7 @@ private struct ProgressStripe: View {
                     .fill(.red)
                     .scaleEffect(x: min(max(fraction, 0), 1), anchor: .leading)
             }
+            .accessibilityHidden(true) // the card's accessibility value carries it
     }
 }
 

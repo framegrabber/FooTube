@@ -4,7 +4,7 @@ import SwiftUI
 /// Tabs plus the shared full-screen player and resolve/failure banner.
 struct RootView: View {
     enum TabID: Hashable {
-        case subscriptions, search, watchLater, history
+        case subscriptions, search, watchLater, history, settings
     }
 
     let catalog: any Catalog
@@ -15,6 +15,8 @@ struct RootView: View {
     @State private var selectedTab: TabID = .subscriptions
     /// Navigation path (pushed channel pages) of each tab.
     @State private var paths: [TabID: [ChannelRef]] = [:]
+    /// Navigation path of the Settings tab (an open SponsorBlock category).
+    @State private var settingsPath: [SponsorCategory] = []
     /// The user moved focus to the tab bar (not tvOS parking it there, see `focusMoved`).
     @State private var userIsInTabBar = false
     /// Tabs whose content had focus before; the first visit (launch, tab switch) is not a "return".
@@ -23,7 +25,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Subscriptions", systemImage: "person.2", value: .subscriptions) {
-                SubscriptionsView(catalog: catalog, path: path(.subscriptions))
+                SubscriptionsView(catalog: catalog, path: path(.subscriptions), onSearch: { selectedTab = .search })
             }
             Tab("Search", systemImage: "magnifyingglass", value: .search, role: .search) {
                 SearchView(catalog: catalog, path: path(.search))
@@ -33,6 +35,9 @@ struct RootView: View {
             }
             Tab("History", systemImage: "clock.arrow.circlepath", value: .history) {
                 HistoryView(catalog: catalog, path: path(.history))
+            }
+            Tab("Settings", systemImage: "gear", value: .settings) {
+                SettingsView(path: $settingsPath)
             }
         }
         .environment(playback)
@@ -55,7 +60,8 @@ struct RootView: View {
                 PlayerView(session: session, onPlayNext: { playback.play($0) }, onClose: { playback.session = nil })
                     .id(session.id)
                     .ignoresSafeArea()
-                    .overlay(alignment: .bottomLeading) {
+                    // Top left: the transport bar, often shown right after a skip, covers the bottom.
+                    .overlay(alignment: .topLeading) {
                         if let notice = session.notice {
                             Text(notice)
                                 .font(.callout)
@@ -70,6 +76,9 @@ struct RootView: View {
                     .overlay(alignment: .bottom) {
                         StatusBanner(status: playback.status) // loading the next video
                     }
+                    .animation(.easeOut(duration: 0.3), value: session.notice)
+                    // Always over video: overlays stay light-on-dark whatever the system appearance.
+                    .environment(\.colorScheme, .dark)
                     .onExitCommand { playback.session = nil }
             }
         }
@@ -110,6 +119,9 @@ struct RootView: View {
         }
         if userIsInTabBar, visitedTabs.contains(selectedTab) {
             paths[selectedTab] = []
+            if selectedTab == .settings {
+                settingsPath = []
+            }
         }
         userIsInTabBar = false
         visitedTabs.insert(selectedTab)
@@ -132,21 +144,25 @@ private struct StatusBanner: View {
             switch status {
             case .idle:
                 EmptyView()
-            case let .resolving(id):
+            case let .resolving(title):
                 HStack(spacing: 24) {
                     ProgressView()
-                    Text("Loading \(id.rawValue)…")
+                    if let title {
+                        Text("Loading “\(title)”…")
+                    } else {
+                        Text("Loading video…")
+                    }
                 }
+                .lineLimit(1)
                 .padding(24)
                 .background(.regularMaterial, in: .capsule)
             case let .failed(message):
-                Text(message)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
+                ErrorMessage(message: message)
                     .padding(24)
                     .background(.regularMaterial, in: .rect(cornerRadius: 20))
             }
         }
+        .padding(.horizontal, 160)
         .padding(.bottom, 40)
         .allowsHitTesting(false)
     }

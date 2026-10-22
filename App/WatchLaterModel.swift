@@ -32,7 +32,13 @@ final class WatchLaterModel {
             items = store.items()
             lastError = nil
         } catch {
-            lastError = "Couldn't save Watch Later: \(error.localizedDescription)"
+            lastError = String(localized: "Couldn't save Watch Later: \(error.localizedDescription)")
         }
+    }
+
+    func clear() {
+        store.clear()
+        items = []
+        lastError = nil
     }
 }

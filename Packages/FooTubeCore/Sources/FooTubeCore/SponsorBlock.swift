@@ -13,22 +13,10 @@ public enum SponsorCategory: String, CaseIterable, Sendable {
     case musicOfftopic = "music_offtopic"
     case filler
 
-    /// `sponsor` is skipped automatically; every other category offers a skip button.
+    /// Skipped automatically by default (`SkipSettings.defaultBehavior`): only `sponsor`; every other
+    /// category offers a skip button unless changed in Settings.
     public var autoSkips: Bool {
         self == .sponsor
-    }
-
-    public var displayName: String {
-        switch self {
-        case .sponsor: "Sponsor"
-        case .selfpromo: "Self-promotion"
-        case .interaction: "Interaction reminder"
-        case .intro: "Intro"
-        case .outro: "Outro"
-        case .preview: "Preview"
-        case .musicOfftopic: "Non-music section"
-        case .filler: "Filler"
-        }
     }
 }
 

@@ -11,18 +11,21 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 48) {
-                    if watchHistory.recentVideos.isEmpty {
-                        Text("No history yet. Videos you play show up here, most recent first.")
-                            .foregroundStyle(.secondary)
+            Group {
+                if watchHistory.recentVideos.isEmpty {
+                    ContentUnavailableView(
+                        "No History",
+                        systemImage: "clock.arrow.circlepath",
+                        description: Text("Videos you play appear here, most recent first, so you can pick up where you left off."),
+                    )
+                } else {
+                    ScrollView {
+                        VideoGrid(videos: watchHistory.recentVideos, onOpenChannel: { path.append($0) })
+                            .padding(80)
                     }
-                    VideoGrid(videos: watchHistory.recentVideos, onOpenChannel: { path.append($0) })
+                    .scrollClipDisabled() // focused lockups lift past the scroll view's edges
                 }
-                .padding(80)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .scrollClipDisabled() // focused lockups lift past the scroll view's edges
             .navigationDestination(for: ChannelRef.self) { channel in
                 ChannelView(catalog: catalog, channel: channel)
             }

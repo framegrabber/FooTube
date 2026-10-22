@@ -6,6 +6,8 @@ import SwiftUI
 struct SubscriptionsView: View {
     let catalog: any Catalog
     @Binding var path: [ChannelRef]
+    /// Switches to the Search tab (empty state action).
+    let onSearch: () -> Void
 
     @Environment(SubscriptionsModel.self) private var subscriptions
     @Environment(FeedModel.self) private var feed
@@ -16,15 +18,16 @@ struct SubscriptionsView: View {
         NavigationStack(path: $path) {
             Group {
                 if subscriptions.subscriptions.isEmpty {
-                    VStack(alignment: .leading, spacing: 40) {
+                    ContentUnavailableView {
+                        Label("No Subscriptions", systemImage: "person.2")
+                    } description: {
+                        Text("Search for a channel, open it and choose Subscribe. New videos from your channels appear here.")
+                    } actions: {
                         if let error = subscriptions.lastError {
-                            Text(error).foregroundStyle(.red)
+                            ErrorMessage(message: error)
                         }
-                        Text("No subscriptions yet. Open a channel from search (long-press a video) and choose Subscribe.")
-                            .foregroundStyle(.secondary)
+                        Button("Search YouTube", action: onSearch)
                     }
-                    .padding(80)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 } else {
                     HStack(alignment: .top, spacing: 0) {
                         ChannelSidebar(subscriptions: subscriptions.subscriptions, selectedID: $selectedID)
@@ -58,11 +61,11 @@ struct SubscriptionsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 40) {
                 if let error = subscriptions.lastError {
-                    Text(error).foregroundStyle(.red)
+                    ErrorMessage(message: error)
                 }
                 header
                 if let error = feed.lastError {
-                    Text(error).foregroundStyle(.red)
+                    ErrorMessage(message: error)
                 }
                 if let selected, videos.isEmpty, !feed.isRefreshing {
                     Text("No recent videos from \(selected.name) in the feed.")
@@ -78,7 +81,11 @@ struct SubscriptionsView: View {
 
     private var header: some View {
         HStack(spacing: 32) {
-            Text(selected?.name ?? "Latest").font(.headline)
+            if let selected {
+                Text(selected.name).font(.headline)
+            } else {
+                Text("Latest").font(.headline)
+            }
             if feed.isRefreshing {
                 ProgressView()
             } else if let fetchedAt = feed.snapshot?.fetchedAt {
@@ -106,7 +113,7 @@ private struct ChannelSidebar: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                SidebarRow(title: "All", isSelected: selectedID == nil) {
+                SidebarRow(title: String(localized: "All"), isSelected: selectedID == nil) {
                     selectedID = nil
                 } icon: {
                     Image(systemName: "square.grid.2x2")

@@ -34,6 +34,7 @@ final class PlayerSession: Identifiable {
     private let catalog: any Catalog
     private let sponsorBlock: SponsorBlockClient
     private let history: WatchHistoryModel
+    private let skipSettings: SkipSettings
     private var skipPolicy = SkipPolicy(segments: [])
     private var pollTask: Task<Void, Never>?
     private var segmentsTask: Task<Void, Never>?
@@ -46,6 +47,7 @@ final class PlayerSession: Identifiable {
     /// seek never overwrites the saved one.
     private var tracksProgress = false
     private var lastRecordedPosition = 0.0
+    private var isStopped = false
     private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "playback")
 
     /// Seconds of playback between saved positions.
@@ -64,6 +66,7 @@ final class PlayerSession: Identifiable {
         catalog: any Catalog,
         sponsorBlock: SponsorBlockClient,
         history: WatchHistoryModel,
+        skipSettings: SkipSettings,
         requestedAt: ContinuousClock.Instant,
     ) {
         self.source = source
@@ -71,6 +74,7 @@ final class PlayerSession: Identifiable {
         self.catalog = catalog
         self.sponsorBlock = sponsorBlock
         self.history = history
+        self.skipSettings = skipSettings
         self.requestedAt = requestedAt
         resolvedAt = .now
         player = AVPlayer(playerItem: AVPlayerItem(asset: source.asset))
@@ -104,10 +108,10 @@ final class PlayerSession: Identifiable {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.recordProgress(reachedEnd: true) }
         }
-        segmentsTask = Task { [sponsorBlock, id] in
+        segmentsTask = Task { [sponsorBlock, id, skipSettings] in
             let segments = await sponsorBlock.segments(for: id)
             guard !Task.isCancelled else { return }
-            skipPolicy = SkipPolicy(segments: segments)
+            skipPolicy = SkipPolicy(segments: segments, settings: skipSettings)
         }
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 2), queue: .main) { [weak self] time in
             MainActor.assumeIsolated { self?.timeChanged(to: time.seconds) }
@@ -122,6 +126,8 @@ final class PlayerSession: Identifiable {
     }
 
     func stop() {
+        guard !isStopped else { return }
+        isStopped = true
         recordProgress()
         prepareTask?.cancel()
         detailsTask?.cancel()
@@ -142,6 +148,13 @@ final class PlayerSession: Identifiable {
         logger.info("\(line, privacy: .public)")
     }
 
+    /// Up next was accepted: stops and empties the player. AVKit expects the next item right away
+    /// and otherwise replays this finished one from the start while the next video resolves.
+    func finish() {
+        stop()
+        player.replaceCurrentItem(with: nil)
+    }
+
     /// The user pressed the skip button for the offered segment.
     func skipOffered() {
         guard let segment = offeredSegment else { return }
@@ -159,7 +172,7 @@ final class PlayerSession: Identifiable {
         case let .autoSkip(segment):
             offeredSegment = nil
             seek(past: segment)
-            show(notice: "Skipped \(segment.category.displayName.lowercased())")
+            show(notice: String(localized: "\(segment.category.localizedName) skipped"))
         case let .offer(segment):
             if offeredSegment != segment {
                 let line = "\(source.id) offering skip of \(segment.category.rawValue) \(segment.start)-\(segment.end)"

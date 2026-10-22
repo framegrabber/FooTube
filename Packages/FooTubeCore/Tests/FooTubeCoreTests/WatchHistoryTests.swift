@@ -137,4 +137,15 @@ struct WatchHistoryTests {
         try history.record(video, position: 130, duration: 600, video: summary(video, title: "Now known"))
         #expect(history.entry(for: video)?.video?.title == "Now known")
     }
+
+    @Test func `clearing forgets positions and watched marks, also for a new store instance`() throws {
+        let defaults = freshDefaults()
+        let history = WatchHistory(defaults: defaults)
+        try history.record(video, position: 300, duration: 600)
+        try history.record(other, position: 300, duration: 300, reachedEnd: true)
+        history.clear()
+        #expect(history.entries().isEmpty)
+        #expect(history.resumePosition(for: video) == nil)
+        #expect(WatchHistory(defaults: defaults).entry(for: other) == nil)
+    }
 }

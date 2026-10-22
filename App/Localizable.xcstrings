@@ -1,0 +1,866 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ skipped": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ übersprungen"
+          }
+        }
+      }
+    },
+    "%@ watched": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gesehen"
+          }
+        }
+      }
+    },
+    "%lld videos": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Video"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Videos"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld video"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld videos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "A Skip button appears in the player while the segment plays.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Während der Abschnitt läuft, erscheint im Player eine Taste zum Überspringen."
+          }
+        }
+      }
+    },
+    "A short reminder in the middle of the video to like, subscribe or follow.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine kurze Erinnerung mitten im Video, zu liken, zu abonnieren oder zu folgen."
+          }
+        }
+      }
+    },
+    "About": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Info"
+          }
+        }
+      }
+    },
+    "Add to Watch Later": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu „Später ansehen“ hinzufügen"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle"
+          }
+        }
+      }
+    },
+    "An interval without actual content: a pause, a static frame or a repeating animation.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Abschnitt ohne eigentlichen Inhalt: eine Pause, ein Standbild oder eine wiederholte Animation."
+          }
+        }
+      }
+    },
+    "By default, sponsor segments are skipped automatically and every other category shows a Skip button.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standardmäßig werden Sponsor-Abschnitte automatisch übersprungen, alle anderen Kategorien zeigen eine Taste zum Überspringen."
+          }
+        }
+      }
+    },
+    "Can't play this video: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Video kann nicht abgespielt werden: %@"
+          }
+        }
+      }
+    },
+    "Channel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kanal"
+          }
+        }
+      }
+    },
+    "Channels": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kanäle"
+          }
+        }
+      }
+    },
+    "Clear Watch History": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf löschen"
+          }
+        }
+      }
+    },
+    "Clear Watch Later": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Später ansehen“ leeren"
+          }
+        }
+      }
+    },
+    "Clear Watch Later?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Später ansehen“ leeren?"
+          }
+        }
+      }
+    },
+    "Clear watch history?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf löschen?"
+          }
+        }
+      }
+    },
+    "Clearing removes every saved video from Watch Later. History and subscriptions stay.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernt alle gespeicherten Videos aus „Später ansehen“. Verlauf und Abos bleiben erhalten."
+          }
+        }
+      }
+    },
+    "Clearing removes every video from History, with its resume position and watched mark. Subscriptions and Watch Later stay.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernt alle Videos aus dem Verlauf, samt Wiedergabeposition und Gesehen-Markierung. Abos und „Später ansehen“ bleiben erhalten."
+          }
+        }
+      }
+    },
+    "Clips that show what is coming up in this video or in other videos of a series.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausschnitte, die zeigen, was in diesem Video oder in anderen Videos einer Reihe noch kommt."
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schließen"
+          }
+        }
+      }
+    },
+    "Couldn't load from YouTube: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laden von YouTube fehlgeschlagen: %@"
+          }
+        }
+      }
+    },
+    "Couldn't load this video: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video konnte nicht geladen werden: %@"
+          }
+        }
+      }
+    },
+    "Couldn't refresh the feed. Check the connection and choose Refresh.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feed konnte nicht aktualisiert werden. Prüfe die Verbindung und wähle „Aktualisieren“."
+          }
+        }
+      }
+    },
+    "Couldn't save Watch Later: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Später ansehen“ konnte nicht gespeichert werden: %@"
+          }
+        }
+      }
+    },
+    "Couldn't save subscription: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abo konnte nicht gespeichert werden: %@"
+          }
+        }
+      }
+    },
+    "Credits and end screens. Not conclusions that still carry information.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abspann und Endcards. Keine Schlussworte, die noch Inhalt haben."
+          }
+        }
+      }
+    },
+    "Expires": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft ab"
+          }
+        }
+      }
+    },
+    "Filler": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füllmaterial"
+          }
+        }
+      }
+    },
+    "Finds the video streams on this Apple TV. github.com/alexeichhorn/YouTubeKit, MIT License.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findet die Videostreams auf diesem Apple TV. github.com/alexeichhorn/YouTubeKit, MIT-Lizenz."
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf"
+          }
+        }
+      }
+    },
+    "In music videos only: parts that are not the song itself.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur in Musikvideos: Teile, die nicht zum Song gehören."
+          }
+        }
+      }
+    },
+    "Interaction reminder": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interaktionserinnerung"
+          }
+        }
+      }
+    },
+    "Intro": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intro"
+          }
+        }
+      }
+    },
+    "Latest": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neueste"
+          }
+        }
+      }
+    },
+    "Loading video…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video wird geladen …"
+          }
+        }
+      }
+    },
+    "Loading “%@”…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wird geladen …"
+          }
+        }
+      }
+    },
+    "No History": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Verlauf"
+          }
+        }
+      }
+    },
+    "No Subscriptions": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Abos"
+          }
+        }
+      }
+    },
+    "No recent videos from %@ in the feed.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine neuen Videos von %@ im Feed."
+          }
+        }
+      }
+    },
+    "Non-music section": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abschnitt ohne Musik"
+          }
+        }
+      }
+    },
+    "Nothing Saved": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts gespeichert"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
+          }
+        }
+      }
+    },
+    "Open %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ öffnen"
+          }
+        }
+      }
+    },
+    "Open Channel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kanal öffnen"
+          }
+        }
+      }
+    },
+    "Outro": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outro"
+          }
+        }
+      }
+    },
+    "Paid promotion, paid referrals and direct advertisements.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezahlte Werbung, bezahlte Empfehlungen und direkte Werbeeinblendungen."
+          }
+        }
+      }
+    },
+    "Play Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt abspielen"
+          }
+        }
+      }
+    },
+    "Play Now (%lld)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt abspielen (%lld)"
+          }
+        }
+      }
+    },
+    "Playback jumps past the segment once and shows a short notice. Going back into it plays it.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Wiedergabe springt einmal über den Abschnitt und zeigt einen kurzen Hinweis. Spulst du zurück, läuft er normal."
+          }
+        }
+      }
+    },
+    "Plays YouTube without ads: streams are found on this Apple TV and play in Apple's player. Subscriptions, history and Watch Later stay on this Apple TV. Not affiliated with YouTube or Google; using YouTube this way is against its Terms of Service.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielt YouTube ohne Werbung: Die Streams werden auf diesem Apple TV gefunden und laufen in Apples Player. Abos, Verlauf und „Später ansehen“ bleiben auf diesem Apple TV. Nicht mit YouTube oder Google verbunden; YouTube so zu nutzen verstößt gegen dessen Nutzungsbedingungen."
+          }
+        }
+      }
+    },
+    "Press and hold a video and choose Add to Watch Later.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halte ein Video gedrückt und füge es zu „Später ansehen“ hinzu."
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschau"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisieren"
+          }
+        }
+      }
+    },
+    "Remove from Watch Later": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus „Später ansehen“ entfernen"
+          }
+        }
+      }
+    },
+    "Restore Defaults": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard wiederherstellen"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suchen"
+          }
+        }
+      }
+    },
+    "Search YouTube": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "YouTube durchsuchen"
+          }
+        }
+      }
+    },
+    "Search for a channel, open it and choose Subscribe. New videos from your channels appear here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche einen Kanal, öffne ihn und wähle „Abonnieren“. Neue Videos deiner Kanäle erscheinen hier."
+          }
+        }
+      }
+    },
+    "Search, channels, chapters and related videos. A renamed copy of github.com/b5i/YouTubeKit, MIT License.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche, Kanäle, Kapitel und ähnliche Videos. Eine umbenannte Kopie von github.com/b5i/YouTubeKit, MIT-Lizenz."
+          }
+        }
+      }
+    },
+    "Segment data by the SponsorBlock community, sponsor.ajay.app, licensed CC BY-NC-SA 4.0. FooTube asks for segments by the first four characters of a hash of the video ID, so SponsorBlock never receives the video ID itself.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abschnittsdaten von der SponsorBlock-Community, sponsor.ajay.app, lizenziert unter CC BY-NC-SA 4.0. FooTube fragt Abschnitte über die ersten vier Zeichen eines Hashs der Video-ID ab, SponsorBlock erhält die Video-ID selbst also nie."
+          }
+        }
+      }
+    },
+    "Segments of this category play normally.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abschnitte dieser Kategorie laufen normal."
+          }
+        }
+      }
+    },
+    "Self-promotion": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigenwerbung"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen"
+          }
+        }
+      }
+    },
+    "Show Skip Button": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taste zum Überspringen"
+          }
+        }
+      }
+    },
+    "Skip %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ überspringen"
+          }
+        }
+      }
+    },
+    "Skip Automatically": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch überspringen"
+          }
+        }
+      }
+    },
+    "Sponsor": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sponsor"
+          }
+        }
+      }
+    },
+    "SponsorBlock": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SponsorBlock"
+          }
+        }
+      }
+    },
+    "Subscribe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonnieren"
+          }
+        }
+      }
+    },
+    "Subscriptions": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abos"
+          }
+        }
+      }
+    },
+    "Tangents and jokes that are not needed to understand the main content.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abschweifungen und Witze, die man für den eigentlichen Inhalt nicht braucht."
+          }
+        }
+      }
+    },
+    "This can't be undone.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das kann nicht rückgängig gemacht werden."
+          }
+        }
+      }
+    },
+    "This install stops launching on %@. Run scripts/run-device.sh again to renew it; subscriptions, history and Watch Later stay.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Installation startet ab %@ nicht mehr. Führe scripts/run-device.sh erneut aus, um sie zu verlängern; Abos, Verlauf und „Später ansehen“ bleiben erhalten."
+          }
+        }
+      }
+    },
+    "This video has no format this Apple TV can play.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Video gibt es in keinem Format, das dieses Apple TV abspielen kann."
+          }
+        }
+      }
+    },
+    "Unpaid self-promotion: merchandise, donations, or who the creator worked with.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbezahlte Eigenwerbung: Merchandise, Spenden oder mit wem der Creator zusammengearbeitet hat."
+          }
+        }
+      }
+    },
+    "Unsubscribe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abo beenden"
+          }
+        }
+      }
+    },
+    "Up Next": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als Nächstes"
+          }
+        }
+      }
+    },
+    "Updated %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisiert %@"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
+    "Videos you play appear here, most recent first, so you can pick up where you left off.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Videos, die du abspielst, erscheinen hier, die neuesten zuerst. So machst du dort weiter, wo du aufgehört hast."
+          }
+        }
+      }
+    },
+    "Watch Later": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Später ansehen"
+          }
+        }
+      }
+    },
+    "Watched": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesehen"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

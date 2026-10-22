@@ -54,7 +54,7 @@ final class FeedModel {
                 lastError = nil
                 try? cache.save(fresh)
             } else {
-                lastError = "Couldn't refresh the feed."
+                lastError = String(localized: "Couldn't refresh the feed. Check the connection and choose Refresh.")
             }
             next = queued.flatMap { $0.map(\.id) == snapshotChannels ? nil : $0 }
         }

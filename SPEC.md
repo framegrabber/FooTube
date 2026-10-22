@@ -1,9 +1,9 @@
 # Spec: FooTube
 
 ## Objective
-A private, sideloaded tvOS app for one household that plays YouTube videos without ads on an **Apple TV HD (4th generation, 2015, A8)**. Streams are resolved on the device and played natively, so the official web player and its ad requests are never involved. Background research: `tvos-youtube-client-findings.md`.
+A sideloaded tvOS app that plays YouTube videos without ads, built for the **Apple TV HD (4th generation, 2015, A8)** and running on every Apple TV with tvOS 18+. Streams are resolved on the device and played natively, so the official web player and its ad requests are never involved. Background research: `docs/research.md`.
 
-**User:** the owner, using the Siri Remote on a 1080p TV. Not distributed, no App Store.
+**Users:** anyone who builds FooTube from the public source and sideloads it onto their own Apple TV, plus their household, using the Siri Remote on a TV (reference: 1080p, Apple TV HD). Design for unknown households, setups and system languages, not one specific home. No App Store distribution.
 
 **User stories (in build order):**
 1. As the user, I enter a video ID or YouTube URL and it plays with sound, without ads.
@@ -112,7 +112,7 @@ Naming: types `UpperCamelCase`, no `Manager`/`Helper` suffixes; one primary type
 
 ## Decisions Recorded
 - No remote extraction fallback initially; self-hosted YouTubeKit-Server may be added later (ask first).
-- SponsorBlock: auto-skip `sponsor`; all other categories show a skip button.
+- SponsorBlock: by default auto-skip `sponsor`; all other categories show a skip button. Each category can be changed in Settings (skip automatically, show button, off).
 - Subscriptions start empty; added only via the channel page. No Takeout import.
 - Device runs tvOS 26 (owner reports "25 or 26"; Apple went from 18 to 26, so ≥ 18 either way). Deployment target tvOS 18 stands.
 

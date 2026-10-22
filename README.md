@@ -19,11 +19,12 @@ It was built for the **Apple TV HD (4th generation, A8)**, which can only decode
 - **Search** with suggestions while you type; results include matching channels.
 - **Channel pages** with all uploads and a Subscribe button. Members-only videos are hidden.
 - **Native player** (`AVPlayerViewController`): Siri Remote scrubbing, the info panel, original audio track, subtitles off by default.
-- **SponsorBlock**: sponsor segments are skipped automatically; other segment types (intro, self-promotion, …) get a "Skip" button.
+- **SponsorBlock**: sponsor segments are skipped automatically; other segment types (intro, self-promotion, …) get a "Skip" button. Each category can be set to skip automatically, show the button, or be ignored in Settings.
 - **Chapters** from the video description in the player's Chapters row, with thumbnails.
 - **Up next**: when a video ends, a related video (preferably from the same channel) plays after a 10-second countdown.
 - **Resume** where you left off, plus **History** and **Watch Later** tabs (long-press a video for the menu).
-- Titles and dates in your Apple TV's language.
+- **Settings**: SponsorBlock behavior per category, clearing History and Watch Later, version, when a sideloaded install expires, and credits.
+- Interface in English and German; titles and dates in your Apple TV's language.
 - Follows Apple's tvOS design: native lockups with lift and tilt, light and dark mode.
 
 ## Install on your own Apple TV
@@ -93,7 +94,7 @@ Debug launch arguments (Simulator or `run-device.sh`): `-play <video ID or URL>`
 
 ## Using it
 
-- **Tabs:** Subscriptions, Search, Watch Later, History.
+- **Tabs:** Subscriptions, Search, Watch Later, History, Settings.
 - **Long press** a video: open its channel, add to or remove from Watch Later.
 - **Menu button:** goes back one level; on a tab's main screen it moves to the tab bar; on the tab bar it leaves the app (tvOS convention). Going up to the tab bar and back down returns a tab to its main screen.
 - **Appearance** follows the Apple TV setting: Settings → General → Appearance.

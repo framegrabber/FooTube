@@ -7,7 +7,8 @@ import Observation
 final class PlaybackController {
     enum Status: Equatable {
         case idle
-        case resolving(VideoID)
+        /// Title when started from a list; nil for a bare ID.
+        case resolving(title: String?)
         case failed(String)
     }
 
@@ -18,14 +19,16 @@ final class PlaybackController {
     private let catalog: any Catalog
     private let sponsorBlock: SponsorBlockClient
     private let history: WatchHistoryModel
+    private let settings: SettingsModel
     private var task: Task<Void, Never>?
     private var clearTask: Task<Void, Never>?
 
-    init(resolver: any StreamResolver, catalog: any Catalog, sponsorBlock: SponsorBlockClient, history: WatchHistoryModel) {
+    init(resolver: any StreamResolver, catalog: any Catalog, sponsorBlock: SponsorBlockClient, history: WatchHistoryModel, settings: SettingsModel) {
         self.resolver = resolver
         self.catalog = catalog
         self.sponsorBlock = sponsorBlock
         self.history = history
+        self.settings = settings
     }
 
     /// Plays a video from a list; its summary is kept in the watch history (History tab).
@@ -42,7 +45,7 @@ final class PlaybackController {
         let requestedAt = ContinuousClock.now
         task?.cancel()
         clearTask?.cancel()
-        status = .resolving(id)
+        status = .resolving(title: summary?.title)
         task = Task {
             do throws(ResolveError) {
                 let stream = try await resolver.resolve(id)
@@ -54,13 +57,14 @@ final class PlaybackController {
                     catalog: catalog,
                     sponsorBlock: sponsorBlock,
                     history: history,
+                    skipSettings: settings.skip,
                     requestedAt: requestedAt,
                 )
             } catch {
                 guard !Task.isCancelled else { return }
                 // Up next failed: close the finished player so the message is visible.
                 session = nil
-                fail(error.message)
+                fail(error.userMessage)
             }
         }
     }

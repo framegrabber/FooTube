@@ -107,4 +107,9 @@ public struct WatchHistory {
         try defaults.set(JSONEncoder().encode(Array(list.prefix(Self.capacity))), forKey: key)
         return entry
     }
+
+    /// Forgets every entry: positions, watched marks and summaries.
+    public func clear() {
+        defaults.removeObject(forKey: key)
+    }
 }

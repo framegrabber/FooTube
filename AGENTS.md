@@ -38,6 +38,7 @@ Simulator: `Apple TV` (1080p, closest to Apple TV HD). It decodes with Mac hardw
 - Swift 6 language mode; warnings are errors in our targets (app and FooTubeCore).
 - Formats for Apple TV HD: video `avc1` ≤ 1080p, audio AAC. Never select VP9/AV1/Opus-only.
 - Logging: `os.Logger(subsystem: AppInfo.logSubsystem, category: …)`.
+- User-facing text: `App/Localizable.xcstrings` (English source, German). Add every new string with a German translation; build with `SWIFT_EMIT_LOC_STRINGS=YES` and read the `.stringsdata` files to get exact keys. Core's English `message`/names are for logs; the app shows `userMessage`/`localizedName` (`App/LocalizedText.swift`).
 - Network tests are opt-in via `FOOTUBE_NETWORK_TESTS=1`; offline tests use recorded fixtures.
 - New dependencies, remote fallbacks, other hosts, Google login: ask first (SPEC → Boundaries).
 - One commit per task; message names the task (e.g. `T2: …`).

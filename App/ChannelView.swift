@@ -18,10 +18,16 @@ struct ChannelView: View {
             VStack(alignment: .leading, spacing: 48) {
                 header
                 if let error {
-                    Text(error).foregroundStyle(.red)
+                    ErrorMessage(message: error)
+                }
+                if page == nil, error == nil {
+                    ProgressView().frame(maxWidth: .infinity)
                 }
                 // All uploads belong to this channel, so no "Open channel" menu here.
                 VideoGrid(videos: videos, onReachEnd: loadMore)
+                if isLoadingMore {
+                    ProgressView().frame(maxWidth: .infinity)
+                }
             }
             .padding(80)
         }
@@ -36,13 +42,13 @@ struct ChannelView: View {
                 .frame(width: 160, height: 160)
                 .clipShape(.circle)
             VStack(alignment: .leading, spacing: 12) {
-                Text(page?.channel.name ?? channel.name ?? "Channel")
+                Text(page?.channel.name ?? channel.name ?? String(localized: "Channel"))
                     .font(.title2)
                 if let subscribers = page?.subscriberCount {
                     Text(subscribers)
                         .foregroundStyle(.secondary)
                 }
-                Button(subscriptions.isSubscribed(channel.id) ? "Unsubscribe" : "Subscribe") {
+                Button(subscriptions.isSubscribed(channel.id) ? LocalizedStringKey("Unsubscribe") : LocalizedStringKey("Subscribe")) {
                     subscriptions.toggle(page?.channel ?? channel, avatar: page?.avatar)
                 }
                 .disabled(page == nil) // wait for the real name and avatar
@@ -61,7 +67,7 @@ struct ChannelView: View {
             next = loaded.videos.next
             error = nil
         } catch {
-            self.error = error.message
+            self.error = error.userMessage
         }
     }
 
@@ -75,7 +81,7 @@ struct ChannelView: View {
                 videos = videos.appendingUnique(more.items)
                 next = more.next
             } catch {
-                self.error = error.message
+                self.error = error.userMessage
             }
         }
     }

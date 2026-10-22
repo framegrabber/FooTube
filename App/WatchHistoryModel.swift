@@ -37,6 +37,18 @@ final class WatchHistoryModel {
         entries[id]?.resumePosition
     }
 
+    /// Videos with a saved position or watched mark, including ones played by ID only.
+    var count: Int {
+        entries.count
+    }
+
+    /// Forgets every position, watched mark and History entry.
+    func clear() {
+        store.clear()
+        entries = [:]
+        recentVideos = []
+    }
+
     /// Saves the position and moves the video to the front of `recentVideos`; ignored without a finite
     /// duration (live streams). Without `video` the stored summary is kept.
     func record(_ id: VideoID, position: Double, duration: Double, reachedEnd: Bool = false, video: VideoSummary? = nil) {

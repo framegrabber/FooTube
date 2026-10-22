@@ -83,6 +83,43 @@ final class FocusNavigationUITests: XCTestCase {
         XCTAssertTrue(app.buttons.matching(videoCard).firstMatch.exists, "search results were cleared")
     }
 
+    /// Settings: a SponsorBlock category's page changes its behavior, Restore Defaults resets it,
+    /// and returning from the tab bar goes back to the first Settings page.
+    func testSettingsChangeAndRestoreSkipBehavior() {
+        let app = launch([])
+        let sponsorRow = NSPredicate(format: "label BEGINSWITH 'Sponsor,'")
+        press(.up, times: 2) // tab bar
+        XCTAssertTrue(move(.right, until: NSPredicate(format: "label == 'Settings'"), in: app), "Settings tab not reached: \(focused(app).label)")
+        press(.down)
+        XCTAssertTrue(move(.up, until: sponsorRow, in: app), "Sponsor row not focused: \(focused(app).label)")
+        XCTAssertTrue(focused(app).label.contains("Skip Automatically"), "unexpected default: \(focused(app).label)")
+        attachScreenshot("settings")
+
+        press(.select)
+        XCTAssertTrue(move(.down, until: NSPredicate(format: "label == 'Skip Automatically'"), in: app, limit: 1), "current behavior not focused: \(focused(app).label)")
+        XCTAssertTrue(move(.down, until: NSPredicate(format: "label == 'Off'"), in: app), "Off not reached")
+        attachScreenshot("sponsor behavior page")
+        press(.select)
+        press(.menu)
+        XCTAssertTrue(move(.up, until: sponsorRow, in: app), "back on the first page: \(focused(app).label)")
+        XCTAssertTrue(focused(app).label.contains("Off"), "Sponsor not set to Off: \(focused(app).label)")
+
+        let restore = NSPredicate(format: "label == 'Restore Defaults'")
+        XCTAssertTrue(move(.down, until: restore, in: app, limit: 10), "Restore Defaults not reached")
+        press(.select)
+        XCTAssertTrue(app.buttons.matching(sponsorRow).firstMatch.label.contains("Skip Automatically"), "defaults not restored")
+
+        XCTAssertTrue(move(.down, until: NSPredicate(format: "label BEGINSWITH 'SponsorBlock,'"), in: app, limit: 12), "About not reached")
+        attachScreenshot("settings about")
+
+        XCTAssertTrue(move(.up, until: sponsorRow, in: app, limit: 20), "Sponsor row not reached again")
+        press(.select)
+        press(.up, times: 4) // options → tab bar
+        press(.down)
+        usleep(1_000_000)
+        XCTAssertTrue(app.buttons["Restore Defaults"].exists, "Settings did not return to its first page")
+    }
+
     /// F11: long-pressing a card shows "Open <channel>", which opens the channel page.
     func testContextMenuOpensChannel() {
         let app = launch(["-search", "blender open movie"])

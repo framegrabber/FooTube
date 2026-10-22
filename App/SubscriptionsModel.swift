@@ -30,7 +30,7 @@ final class SubscriptionsModel {
             subscriptions = store.channels()
             lastError = nil
         } catch {
-            lastError = "Couldn't save subscription: \(error.localizedDescription)"
+            lastError = String(localized: "Couldn't save subscription: \(error.localizedDescription)")
         }
     }
 }

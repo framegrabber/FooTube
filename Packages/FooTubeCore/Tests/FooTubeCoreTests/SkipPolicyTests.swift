@@ -44,4 +44,30 @@ struct SkipPolicyTests {
         var policy = SkipPolicy(segments: [overlappingIntro, sponsor])
         #expect(policy.evaluate(at: 65) == .autoSkip(sponsor))
     }
+
+    @Test func `a category turned off is neither skipped nor offered`() {
+        var settings = SkipSettings.default
+        settings.set(.off, for: .sponsor)
+        settings.set(.off, for: .intro)
+        var policy = SkipPolicy(segments: [intro, sponsor], settings: settings)
+        #expect(policy.evaluate(at: 2) == .none)
+        #expect(policy.evaluate(at: 65) == .none)
+    }
+
+    @Test func `categories follow their setting: intro skipped automatically, sponsor offered`() {
+        var settings = SkipSettings.default
+        settings.set(.skipAutomatically, for: .intro)
+        settings.set(.showButton, for: .sponsor)
+        var policy = SkipPolicy(segments: [intro, sponsor], settings: settings)
+        #expect(policy.evaluate(at: 2) == .autoSkip(intro))
+        #expect(policy.evaluate(at: 65) == .offer(sponsor))
+    }
+
+    @Test func `an offered segment overlapping one that is off is still offered`() {
+        let overlappingIntro = SkipSegment(id: "intro2", category: .intro, start: 55, end: 70)
+        var settings = SkipSettings.default
+        settings.set(.off, for: .sponsor)
+        var policy = SkipPolicy(segments: [sponsor, overlappingIntro], settings: settings)
+        #expect(policy.evaluate(at: 65) == .offer(overlappingIntro))
+    }
 }

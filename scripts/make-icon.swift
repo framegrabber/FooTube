@@ -1,6 +1,7 @@
 // Generates the tvOS app icon + top shelf asset catalog for FooTube.
 // Regenerate (deterministic, re-runnable): swift scripts/make-icon.swift
-// Writes App/Assets.xcassets/App Icon & Top Shelf Image.brandassets/** (PNGs + Contents.json).
+// Writes App/Assets.xcassets/App Icon & Top Shelf Image.brandassets/** (PNGs + Contents.json) and
+// App/Assets.xcassets/AppArtwork.imageset, the icon flattened into one image for in-app use (Settings).
 
 import CoreGraphics
 import CoreText
@@ -11,6 +12,7 @@ import UniformTypeIdentifiers
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     .appendingPathComponent("App/Assets.xcassets")
 let brand = root.appendingPathComponent("App Icon & Top Shelf Image.brandassets")
+let artworkSet = root.appendingPathComponent("AppArtwork.imageset")
 let info: [String: Any] = ["author": "xcode", "version": 1]
 
 func fail(_ message: String) -> Never {
@@ -115,6 +117,23 @@ func iconStack(name: String, base: (Int, Int), scales: [Int]) {
     }
 }
 
+// MARK: - In-app artwork
+
+/// The app icon's two layers drawn into one opaque image.
+func artwork(base: (Int, Int), scales: [Int]) {
+    var images: [[String: Any]] = []
+    for scale in scales {
+        let file = "artwork@\(scale)x.png"
+        images.append(["filename": file, "idiom": "tv", "scale": "\(scale)x"])
+        let image = render(base.0 * scale, base.1 * scale, opaque: true) { ctx, w, h in
+            background(ctx, w, h)
+            playGlyph(ctx, center: CGPoint(x: w / 2, y: h / 2), size: h * 0.46)
+        }
+        writeJSON(["info": info, "images": images], to: artworkSet)
+        savePNG(image, artworkSet.appendingPathComponent(file))
+    }
+}
+
 // MARK: - Top shelf
 
 func topShelf(name: String, base: (Int, Int)) {
@@ -140,6 +159,7 @@ func topShelf(name: String, base: (Int, Int)) {
 }
 
 try? FileManager.default.removeItem(at: brand)
+try? FileManager.default.removeItem(at: artworkSet)
 writeJSON(["info": info], to: root)
 writeJSON([
     "info": info,
@@ -154,4 +174,5 @@ iconStack(name: "App Icon", base: (400, 240), scales: [1, 2])
 iconStack(name: "App Icon - App Store", base: (1280, 768), scales: [1])
 topShelf(name: "Top Shelf Image", base: (1920, 720))
 topShelf(name: "Top Shelf Image Wide", base: (2320, 720))
-print("Wrote \(brand.path)")
+artwork(base: (400, 240), scales: [1, 2])
+print("Wrote \(brand.path) and \(artworkSet.path)")

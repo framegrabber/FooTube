@@ -58,4 +58,14 @@ struct WatchLaterTests {
         try store.add(summary(first))
         #expect(store.items().map(\.id) == [first])
     }
+
+    @Test func `clearing removes every video, also for a new store instance`() throws {
+        let defaults = freshDefaults()
+        let store = WatchLaterStore(defaults: defaults)
+        try store.add(summary(first))
+        try store.add(summary(second))
+        store.clear()
+        #expect(store.items().isEmpty)
+        #expect(WatchLaterStore(defaults: defaults).items().isEmpty)
+    }
 }

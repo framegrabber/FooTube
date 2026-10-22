@@ -13,6 +13,7 @@ struct SearchView: View {
     @State private var results: [VideoSummary] = []
     @State private var channels: [ChannelSummary] = []
     @State private var next: PageCursor?
+    @State private var isSearching = false
     @State private var isLoadingMore = false
     @State private var error: String?
     /// YouTube's completions for the typed text, shown under the search field.
@@ -24,12 +25,20 @@ struct SearchView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 48) {
                     if let error {
-                        Text(error).foregroundStyle(.red)
+                        ErrorMessage(message: error)
+                    }
+                    if isSearching {
+                        ProgressView().frame(maxWidth: .infinity)
+                    } else if let searchedQuery, results.isEmpty, channels.isEmpty, error == nil {
+                        ContentUnavailableView.search(text: searchedQuery)
                     }
                     if !channels.isEmpty {
                         ChannelRow(channels: channels) { path.append($0.ref) }
                     }
                     VideoGrid(videos: results, onReachEnd: loadMore, onOpenChannel: { path.append($0) })
+                    if isLoadingMore {
+                        ProgressView().frame(maxWidth: .infinity)
+                    }
                 }
                 .padding(.horizontal, 80)
             }
@@ -73,6 +82,8 @@ struct SearchView: View {
     }
 
     private func search(_ text: String) async {
+        isSearching = true
+        defer { isSearching = false }
         do throws(CatalogError) {
             let page = try await catalog.search(text)
             guard !Task.isCancelled else { return }
@@ -82,7 +93,7 @@ struct SearchView: View {
             next = page.next
             error = nil
         } catch {
-            self.error = error.message
+            self.error = error.userMessage
         }
     }
 
@@ -99,7 +110,7 @@ struct SearchView: View {
                 channels = channels.appendingUnique(page.channels)
                 next = page.next
             } catch {
-                self.error = error.message
+                self.error = error.userMessage
             }
         }
     }

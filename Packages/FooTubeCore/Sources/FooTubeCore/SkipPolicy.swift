@@ -1,5 +1,5 @@
-/// Decides what to do with SponsorBlock segments as playback time advances (SPEC success criterion 4):
-/// auto-skip `sponsor` once, offer a skip button for every other category while inside it.
+/// Decides what to do with SponsorBlock segments as playback time advances, per category as set in
+/// `SkipSettings`: skip automatically once, offer a skip button while inside, or ignore.
 public struct SkipPolicy: Sendable {
     public enum Decision: Hashable, Sendable {
         case none
@@ -11,19 +11,21 @@ public struct SkipPolicy: Sendable {
     static let endMargin = 0.5
 
     private let segments: [SkipSegment]
+    private let settings: SkipSettings
     private var skipped: Set<String> = []
 
-    public init(segments: [SkipSegment]) {
-        self.segments = segments
+    public init(segments: [SkipSegment], settings: SkipSettings = .default) {
+        self.segments = segments.filter { settings.behavior(for: $0.category) != .off }
+        self.settings = settings
     }
 
     /// Call on every time update. An `.autoSkip` is returned once per segment; the caller seeks to
     /// its end. Seeking back into it later does not skip again.
     public mutating func evaluate(at time: Double) -> Decision {
         let active = segments.filter { !skipped.contains($0.id) && $0.start <= time && time < $0.end - Self.endMargin }
-        if let sponsor = active.first(where: \.category.autoSkips) {
-            skipped.insert(sponsor.id)
-            return .autoSkip(sponsor)
+        if let segment = active.first(where: { settings.behavior(for: $0.category) == .skipAutomatically }) {
+            skipped.insert(segment.id)
+            return .autoSkip(segment)
         }
         return active.first.map(Decision.offer) ?? .none
     }

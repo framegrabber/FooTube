@@ -73,7 +73,7 @@ struct PlayerView: UIViewControllerRepresentable {
             guard offer != shownOffer else { return }
             shownOffer = offer
             controller.contextualActions = offer.map { segment in
-                [UIAction(title: "Skip \(segment.category.displayName)") { [session] _ in session.skipOffered() }]
+                [UIAction(title: String(localized: "Skip \(segment.category.localizedName)")) { [session] _ in session.skipOffered() }]
             } ?? []
         }
 
@@ -86,6 +86,7 @@ struct PlayerView: UIViewControllerRepresentable {
         func playerViewController(_: AVPlayerViewController, didAccept _: AVContentProposal) {
             guard !answeredProposal, let next = session.upNext else { return }
             answeredProposal = true
+            session.finish()
             onPlayNext(next)
         }
 
@@ -132,6 +133,7 @@ final class UpNextViewController: AVContentProposalViewController {
             onClose: { [weak self] in self?.dismissContentProposal(for: .reject, animated: true) },
         )
         let host = UIHostingController(rootView: content)
+        host.overrideUserInterfaceStyle = .dark // over video: light text whatever the system appearance
         host.view.backgroundColor = .clear
         addChild(host)
         host.view.frame = view.bounds

@@ -33,6 +33,10 @@ public struct WatchLaterStore {
         try save(items().filter { $0.id != id })
     }
 
+    public func clear() {
+        defaults.removeObject(forKey: key)
+    }
+
     private func save(_ list: [VideoSummary]) throws {
         try defaults.set(JSONEncoder().encode(list), forKey: key)
     }
