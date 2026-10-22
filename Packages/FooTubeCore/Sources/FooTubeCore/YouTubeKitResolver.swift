@@ -73,11 +73,38 @@ public struct YouTubeKitResolver: StreamResolver {
         }
         guard let text = String(data: data, encoding: .utf8),
               let filtered = HLSMasterPlaylist.filtered(text, for: profile) else { return nil }
+        let iFramePlaylists = await iFramePlaylists(for: filtered.iFrameSources, videoID: videoID)
         return ResolvedStream(
             videoID: videoID,
             url: master,
-            kind: .hls(playlist: filtered.text, variantCount: filtered.variantCount, maxHeight: filtered.maxHeight),
+            kind: .hls(filtered.adding(iFramePlaylists: iFramePlaylists)),
         )
+    }
+
+    /// I-frame playlists for scrubbing thumbnails, built from the low variants' media playlists in
+    /// parallel (~0.2 s). One that can't be fetched or rewritten is left out, so the video just has
+    /// no thumbnails: a declared I-frame playlist AVPlayer can't load fails the whole video.
+    private func iFramePlaylists(for sources: [HLSMasterPlaylist.IFrameSource], videoID: VideoID) async -> [Int: String] {
+        await withTaskGroup(of: (Int, String?).self) { group in
+            for source in sources {
+                group.addTask { [session] in
+                    var request = URLRequest(url: source.mediaURL)
+                    request.timeoutInterval = 5
+                    guard let (data, response) = try? await session.data(for: request),
+                          (response as? HTTPURLResponse)?.statusCode == 200 else { return (source.height, nil) }
+                    return (source.height, HLSMasterPlaylist.iFramePlaylist(fromMedia: String(decoding: data, as: UTF8.self)))
+                }
+            }
+            var built: [Int: String] = [:]
+            for await (height, playlist) in group {
+                if let playlist {
+                    built[height] = playlist
+                } else {
+                    logger.info("\(videoID, privacy: .public): no I-frame playlist from the \(height)p variant")
+                }
+            }
+            return built
+        }
     }
 
     private func firstBytesStatus(_ url: URL) async -> Int {

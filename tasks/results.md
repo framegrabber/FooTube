@@ -59,3 +59,13 @@ Known gaps: made-for-kids videos fail (YouTubeKit returns no streams); some vide
 | Start time | `first frame after` log, 5 launches each | After resolve: median 0.68 s with and without; totals 2.55 vs 2.42 s, difference within resolve (network) noise |
 
 Decision: go. Not yet known: start time and scrubbing smoothness on the Apple TV HD.
+
+## 2026-10-22 — H2–H3 scrubbing thumbnails in the `Apple TV` Simulator
+
+| Check | Method | Result |
+|---|---|---|
+| Lazy serving (first H3 design) failure mode | I-frame sources pointed at an unreachable host; then an empty I-frame playlist as fallback | Both fail the whole video: black screen, CoreMedia -12642 "no media files in stream playlist", main item stopped. Lazy design dropped; owner chose build-first |
+| Thumbnails (build-first) | Throwaway UI test on `aqz-KE-bpKQ`: pause, step right twice, hold right | Thumbnails at 01:17, 01:27 and while scanning (01:43); log: "2 I-frame playlists", AVKit requests both ~0.76 s after load, served from memory |
+| Live stream | `-play rFZHOHl-L8A` | Plays normally, "0 I-frame playlists" |
+| Start time | `first frame after`, 5 launches of `aqz-KE-bpKQ` each, medians | Before 2.42 s (resolve 1.76); build-first 2.84 s (resolve 2.12, +0.36 s, within the run-to-run resolve spread of up to 0.8 s). Device measurement pending |
+| Real YouTube | `FOOTUBE_NETWORK_TESTS=1`, `ResolverNetworkTests` | Big Buck Bunny, music video, > 2 h video: 2 I-frame playlists each; livestream: 0; made-for-kids still fails (known) |

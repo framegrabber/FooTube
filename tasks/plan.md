@@ -118,11 +118,11 @@ From the library-capabilities idea list (owner picked 1–3). InnerTubeKit `More
 - [x] Verified in the Simulator (chapter row with thumbnails, Up next countdown + autoplay, suggestions); device check by owner pending
 
 ### Phase 9: Scrubbing thumbnails (2026-10-22) — details in `tasks/todo.md` H1–H3
-Direction and assumptions: `docs/ideas/scrubbing-thumbnails.md`. AVKit draws scrubbing and scanning thumbnails only from I-frame playlists; YouTube's HLS has none. FooTube declares I-frame variants for the 144p and 240p H.264 variants and serves them lazily from `PlaylistLoader`, rewritten from the googlevideo media playlists (one whole TS segment per entry).
-- [ ] H1: Spike: segments start with an IDR; AVKit shows thumbnails from whole-segment I-frame entries (Simulator). No-go → back to the owner (byte ranges or storyboards)
-- [ ] H2: Core: I-frame lines in `HLSMasterPlaylist.filtered`, I-frame media-playlist rewrite, fixture tests
-- [ ] H3: App: lazy serving in `PlaylistLoader`, request logging, Simulator evidence, start-time comparison
-- [ ] Owner on the Apple TV HD: thumbnails while scrubbing, start time unchanged, scrubbing smooth
+Direction and assumptions: `docs/ideas/scrubbing-thumbnails.md`. AVKit draws scrubbing and scanning thumbnails only from I-frame playlists; YouTube's HLS has none. The resolver fetches the 144p and 240p H.264 media playlists right after the master and rewrites them as I-frame playlists (one whole TS segment per entry); the master declares only those built, and `PlaylistLoader` serves them from memory. Changed from the lazy plan after H3 showed that a declared I-frame playlist AVKit can't load fails the whole video (CoreMedia -12642); the owner chose reliability over ~0.2–0.4 s of start time. Live streams get none.
+- [x] H1: Spike: segments start with an IDR; AVKit shows thumbnails from whole-segment I-frame entries (Simulator)
+- [x] H2: Core: `HLSMasterPlaylist` I-frame sources, `adding(iFramePlaylists:)`, VOD media-playlist rewrite, fixture tests
+- [x] H3: Resolver builds the playlists, loader serves them from memory with request logging; Simulator evidence, start-time comparison, opt-in network test
+- [ ] Owner on the Apple TV HD: thumbnails while scrubbing, start time acceptable, scrubbing smooth
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |

@@ -39,3 +39,6 @@ Out: everything in "Not Doing".
 - Cost for a 10:34 video (123 segments): 144p ≈ 20 KB per segment, ≈ 2.4 MB total; 240p ≈ 70 KB per segment, ≈ 8.5 MB total.
 - Storyboards (player endpoint, `VideoInfosResponse.storyboard`): 320×180 (3×3 sheets) or 160×90 (5×5), one frame every 5 s; 3 of 4 test videos had one.
 - `AVAssetWriterDelegate` segment output: tvOS 14+ (needed only for the storyboard fallback).
+
+## Outcome (2026-10-22)
+Built as H1–H3 (`tasks/plan.md` Phase 9). One change from the direction above: a declared I-frame playlist AVKit can't load fails the whole video (CoreMedia -12642), so the playlists are built in the resolver right after the master and only declared when built, instead of lazily. Cost: about 0.2–0.4 s of start time (Simulator); live streams get no thumbnails. Results: `tasks/results.md`.

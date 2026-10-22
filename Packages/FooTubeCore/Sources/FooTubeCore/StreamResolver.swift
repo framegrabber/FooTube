@@ -4,8 +4,8 @@ import Foundation
 public struct ResolvedStream: Hashable, Sendable {
     public enum Kind: Hashable, Sendable {
         /// HLS master playlist already filtered to decodable variants (VOD and live).
-        /// `playlist` must be served to AVPlayer instead of the original master at `url`.
-        case hls(playlist: String, variantCount: Int, maxHeight: Int)
+        /// Its `text` must be served to AVPlayer instead of the original master at `url`.
+        case hls(HLSMasterPlaylist.Filtered)
         /// Single file containing H.264 video and AAC audio (fallback when no HLS is offered).
         case muxed(itag: Int, height: Int)
     }
@@ -23,7 +23,8 @@ public struct ResolvedStream: Hashable, Sendable {
     /// Short human-readable description for diagnostics.
     public var summary: String {
         switch kind {
-        case let .hls(_, variantCount, maxHeight): "HLS, \(variantCount) H.264 variants up to \(maxHeight)p"
+        case let .hls(filtered):
+            "HLS, \(filtered.variantCount) H.264 variants up to \(filtered.maxHeight)p, \(filtered.iFramePlaylists.count) I-frame playlists"
         case let .muxed(itag, height): "muxed itag \(itag), \(height)p"
         }
     }

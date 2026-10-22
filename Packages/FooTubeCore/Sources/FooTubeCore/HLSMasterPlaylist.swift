@@ -9,27 +9,73 @@ public enum HLSMasterPlaylist {
         public let text: String
         public let variantCount: Int
         public let maxHeight: Int
+        /// Low variants whose media playlists can become I-frame playlists; empty when the master
+        /// has decodable I-frame playlists of its own. Not declared in `text` until built and added
+        /// with `adding(iFramePlaylists:)`.
+        public let iFrameSources: [IFrameSource]
+        /// I-frame playlists declared in `text` by FooTube, by URI relative to the master; served
+        /// from memory so AVPlayer can always load them.
+        public let iFramePlaylists: [String: String]
+
+        /// This master declaring the given I-frame playlists, built from `iFrameSources` (keyed by
+        /// height; heights without a source are ignored). Declare only what was built: a declared
+        /// I-frame playlist AVPlayer cannot load fails the whole video (CoreMedia -12642).
+        public func adding(iFramePlaylists built: [Int: String]) -> Filtered {
+            var lines: [String] = []
+            var playlists = iFramePlaylists
+            for source in iFrameSources {
+                guard let playlist = built[source.height] else { continue }
+                let uri = "iframes-\(source.height).m3u8"
+                lines.append("#EXT-X-I-FRAME-STREAM-INF:\(source.attributes),URI=\"\(uri)\"")
+                playlists[uri] = playlist
+            }
+            var master = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+            master.insert(contentsOf: lines, at: master.firstIndex { $0.hasPrefix("#EXT-X-STREAM-INF:") } ?? master.endIndex)
+            return Filtered(
+                text: master.joined(separator: "\n"),
+                variantCount: variantCount,
+                maxHeight: maxHeight,
+                iFrameSources: iFrameSources,
+                iFramePlaylists: playlists,
+            )
+        }
+    }
+
+    /// A variant to build an I-frame playlist from.
+    public struct IFrameSource: Hashable, Sendable {
+        public let height: Int
+        public let mediaURL: URL
+        /// `BANDWIDTH`, `CODECS` (video only) and `RESOLUTION` of the variant, for its I-frame line.
+        let attributes: String
     }
 
     /// AVPlayer starts with the first listed variant (HLS authoring spec); YouTube lists 240p first.
     static let startHeight = 720
 
+    /// Heights whose variants become I-frame playlists. Every YouTube TS segment starts with an IDR,
+    /// so a whole segment is a valid I-frame; low variants keep the bytes per thumbnail small.
+    static let iFrameMaxHeight = 240
+
     /// Keeps every non-variant line (header, `#EXT-X-MEDIA` renditions) and each
     /// `#EXT-X-STREAM-INF` + URI pair whose video codec is H.264 within the profile. The best
     /// variant at or below `startHeight` is listed first so playback starts sharp; ABR adapts from there.
     /// Renditions get default flags for the original audio and no subtitles (`withPreferredDefaults`).
+    /// Without decodable I-frame playlists of its own, the cheapest variant of each height up to
+    /// `iFrameMaxHeight` becomes an `iFrameSources` entry, for scrubbing thumbnails.
     /// Returns nil when no variant qualifies.
     public static func filtered(_ text: String, for profile: DecodeProfile) -> Filtered? {
         var otherLines: [Substring] = []
         var variants: [(info: Substring, uri: Substring, height: Int, bandwidth: Int)] = []
         var pending: (info: Substring, height: Int)?
         var dropNextURI = false
+        var hasIFramePlaylist = false
 
         for line in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
             if line.hasPrefix("#EXT-X-I-FRAME-STREAM-INF:") {
                 // Trick-play playlist; its URI is an attribute, so it is a single line.
                 if decodableHeight(attributes: line, profile: profile) != nil {
                     otherLines.append(line)
+                    hasIFramePlaylist = true
                 }
             } else if line.hasPrefix("#EXT-X-STREAM-INF:") {
                 if let height = decodableHeight(attributes: line, profile: profile) {
@@ -59,13 +105,47 @@ public enum HLSMasterPlaylist {
             variants.insert(variants.remove(at: start), at: 0)
         }
 
+        var iFrameSources: [IFrameSource] = []
+        if !hasIFramePlaylist {
+            let low = Dictionary(grouping: variants.filter { $0.height <= iFrameMaxHeight }, by: \.height)
+            for height in low.keys.sorted() {
+                guard let cheapest = low[height]?.min(by: { $0.bandwidth < $1.bandwidth }),
+                      let media = URL(string: String(cheapest.uri)),
+                      let codec = videoCodecs(attributes: cheapest.info).first,
+                      let resolution = attribute("RESOLUTION", in: cheapest.info) else { continue }
+                let attributes = "BANDWIDTH=\(cheapest.bandwidth),CODECS=\"\(codec)\",RESOLUTION=\(resolution)"
+                iFrameSources.append(IFrameSource(height: height, mediaURL: media, attributes: attributes))
+            }
+        }
+
         let lines = withPreferredDefaults(otherLines.filter { !$0.isEmpty }) + variants.flatMap { [String($0.info), String($0.uri)] }
         return Filtered(
             text: lines.joined(separator: "\n") + "\n",
             variantCount: variants.count,
             maxHeight: variants.map(\.height).max() ?? 0,
+            iFrameSources: iFrameSources,
+            iFramePlaylists: [:],
         )
     }
+
+    /// Turns a VOD variant's media playlist into an I-frame playlist (RFC 8216 §4.3.3.6): each
+    /// segment, with its duration, becomes one I-frame, the whole segment being the I-frame resource.
+    /// Valid because each of YouTube's TS segments starts with its own PAT/PMT, SPS/PPS and an IDR,
+    /// so it decodes alone. Nil for live playlists (no `EXT-X-ENDLIST`: a served snapshot would go
+    /// stale), byte-range or fMP4 (`EXT-X-MAP`) segments, which are not self-contained files, and
+    /// input without segments.
+    public static func iFramePlaylist(fromMedia text: String) -> String? {
+        let lines = text.split(whereSeparator: \.isNewline)
+        guard lines.first == "#EXTM3U", lines.contains("#EXT-X-ENDLIST"),
+              !lines.contains(where: { $0.hasPrefix("#EXT-X-BYTERANGE") || $0.hasPrefix("#EXT-X-MAP") }),
+              lines.contains(where: { !$0.hasPrefix("#") }) else { return nil }
+        let version = lines.lazy.compactMap { $0.hasPrefix(versionTag) ? Int($0.dropFirst(versionTag.count)) : nil }.first ?? 1
+        let header = ["#EXTM3U", "\(versionTag)\(max(version, 4))", "#EXT-X-I-FRAMES-ONLY"]
+        let body = lines.dropFirst().filter { !$0.hasPrefix(versionTag) && $0 != "#EXT-X-I-FRAMES-ONLY" }.map(String.init)
+        return (header + body).joined(separator: "\n") + "\n"
+    }
+
+    private static let versionTag = "#EXT-X-VERSION:"
 
     private static let mediaTag = "#EXT-X-MEDIA:"
 
@@ -213,18 +293,21 @@ public enum HLSMasterPlaylist {
     }
 
     private static func decodableHeight(attributes line: Substring, profile: DecodeProfile) -> Int? {
-        guard let codecs = attribute("CODECS", in: line), let resolution = attribute("RESOLUTION", in: line) else {
-            return nil
-        }
+        guard let resolution = attribute("RESOLUTION", in: line) else { return nil }
         let dimensions = resolution.split(separator: "x").compactMap { Int($0) }
         guard dimensions.count == 2, let height = dimensions.min() else { return nil }
 
-        let videoCodecs = codecs.split(separator: ",")
+        let videoCodecs = videoCodecs(attributes: line)
+        guard videoCodecs.count == 1, profile.canDecode(VideoCodec(codecString: videoCodecs[0]), height: height) else { return nil }
+        return height
+    }
+
+    /// The video entries of `CODECS` (e.g. `avc1.4D400C`), without audio or subtitle codecs.
+    private static func videoCodecs(attributes line: Substring) -> [String] {
+        guard let codecs = attribute("CODECS", in: line) else { return [] }
+        return codecs.split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { codec in videoCodecPrefixes.contains { codec.lowercased().hasPrefix($0) } }
-            .map(VideoCodec.init(codecString:))
-        guard videoCodecs.count == 1, profile.canDecode(videoCodecs[0], height: height) else { return nil }
-        return height
     }
 
     /// RFC 6381 sample-entry prefixes of video codecs; everything else in CODECS (audio, subtitles) is ignored.

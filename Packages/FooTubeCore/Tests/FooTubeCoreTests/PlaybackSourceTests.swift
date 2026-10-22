@@ -11,7 +11,7 @@ struct PlaybackSourceTests {
         let stream = try ResolvedStream(
             videoID: #require(VideoID("a_b-c_d-e_f")),
             url: #require(URL(string: "https://example.invalid/master.m3u8")),
-            kind: .hls(playlist: filtered.text, variantCount: filtered.variantCount, maxHeight: filtered.maxHeight),
+            kind: .hls(filtered),
         )
         let source = PlaybackSource(stream: stream)
 

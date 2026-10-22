@@ -21,6 +21,7 @@ It was built for the **Apple TV HD (4th generation, A8)**, which can only decode
 - **Native player** (`AVPlayerViewController`): Siri Remote scrubbing, the info panel, original audio track, subtitles off by default.
 - **SponsorBlock**: sponsor segments are skipped automatically; other segment types (intro, self-promotion, …) get a "Skip" button. Each category can be set to skip automatically, show the button, or be ignored in Settings.
 - **Chapters** from the video description in the player's Chapters row, with thumbnails.
+- **Scrubbing thumbnails**: pictures above the timeline while scrubbing or fast-forwarding (videos; not live streams).
 - **Up next**: when a video ends, a related video (preferably from the same channel) plays after a 10-second countdown.
 - **Resume** where you left off, plus **History** and **Watch Later** tabs (long-press a video for the menu).
 - **Settings**: SponsorBlock behavior per category, clearing History and Watch Later, version, when a sideloaded install expires, and credits.

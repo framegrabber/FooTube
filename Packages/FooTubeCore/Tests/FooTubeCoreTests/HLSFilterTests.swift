@@ -195,3 +195,104 @@ struct HLSRenditionDefaultsTests {
         #expect(renditions(filtered, type: "AUDIO") == renditions(text, type: "AUDIO"))
     }
 }
+
+@Suite("I-frame playlists for scrubbing thumbnails")
+struct HLSIFramePlaylistTests {
+    let master: String = {
+        let url = Bundle.module.url(forResource: "master-bbb", withExtension: "m3u8", subdirectory: "Fixtures")!
+        return try! String(contentsOf: url, encoding: .utf8)
+    }()
+
+    private func iFrameLines(_ text: String) -> [String] {
+        text.split(separator: "\n").filter { $0.hasPrefix("#EXT-X-I-FRAME-STREAM-INF:") }.map(String.init)
+    }
+
+    @Test func `offers the cheapest H 264 variant of each height up to 240p as a source, declaring nothing yet`() throws {
+        let filtered = try #require(HLSMasterPlaylist.filtered(master, for: .appleTVHD))
+        #expect(filtered.iFrameSources.map(\.height) == [144, 240])
+        #expect(filtered.iFrameSources.map(\.mediaURL.absoluteString) == ["https://example.invalid/playlist/7.m3u8", "https://example.invalid/playlist/3.m3u8"])
+        #expect(iFrameLines(filtered.text).isEmpty)
+        #expect(filtered.iFramePlaylists.isEmpty)
+    }
+
+    @Test func `declares exactly the built I-frame playlists and keeps them to serve`() throws {
+        let filtered = try #require(HLSMasterPlaylist.filtered(master, for: .appleTVHD))
+            .adding(iFramePlaylists: [240: "#EXTM3U\n#EXT-X-I-FRAMES-ONLY\n", 1080: "ignored"])
+        #expect(iFrameLines(filtered.text) == [
+            "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=310801,CODECS=\"avc1.4D4015\",RESOLUTION=426x240,URI=\"iframes-240.m3u8\"",
+        ])
+        #expect(filtered.iFramePlaylists == ["iframes-240.m3u8": "#EXTM3U\n#EXT-X-I-FRAMES-ONLY\n"])
+        #expect(filtered.variantCount == 7)
+        #expect(filtered.text.hasPrefix("#EXTM3U\n"))
+    }
+
+    @Test func `adding nothing leaves the master unchanged`() throws {
+        let filtered = try #require(HLSMasterPlaylist.filtered(master, for: .appleTVHD))
+        #expect(filtered.adding(iFramePlaylists: [:]) == filtered)
+    }
+
+    @Test func `no sources without an H 264 variant up to 240p`() throws {
+        let text = """
+        #EXTM3U
+        #EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1920x1080
+        https://example.invalid/h264.m3u8
+        #EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="vp09.00.10.08,mp4a.40.2",RESOLUTION=256x144
+        https://example.invalid/vp9.m3u8
+        """
+        #expect(try #require(HLSMasterPlaylist.filtered(text, for: .appleTVHD)).iFrameSources.isEmpty)
+    }
+
+    @Test func `keeps YouTube's own decodable I-frame playlists instead of offering sources`() throws {
+        let text = """
+        #EXTM3U
+        #EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4D400C",RESOLUTION=256x144,URI="https://example.invalid/iframe.m3u8"
+        #EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4D400C,mp4a.40.2",RESOLUTION=256x144
+        https://example.invalid/144.m3u8
+        """
+        let filtered = try #require(HLSMasterPlaylist.filtered(text, for: .appleTVHD))
+        #expect(iFrameLines(filtered.text) == ["#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1,CODECS=\"avc1.4D400C\",RESOLUTION=256x144,URI=\"https://example.invalid/iframe.m3u8\""])
+        #expect(filtered.iFrameSources.isEmpty)
+    }
+
+    @Test func `rewrites a VOD media playlist: every segment as an I-frame, same durations, version 4`() throws {
+        let media = """
+        #EXTM3U
+        #EXT-X-VERSION:3
+        #EXT-X-PLAYLIST-TYPE:VOD
+        #EXT-X-TARGETDURATION:7
+        #EXTINF:4.033333,
+        https://example.invalid/seg/0.ts
+        #EXTINF:4.333333,
+        https://example.invalid/seg/1.ts
+        #EXTINF:2.5,
+        https://example.invalid/seg/2.ts
+        #EXT-X-ENDLIST
+        """
+        let iFrames = try #require(HLSMasterPlaylist.iFramePlaylist(fromMedia: media))
+        #expect(iFrames == """
+        #EXTM3U
+        #EXT-X-VERSION:4
+        #EXT-X-I-FRAMES-ONLY
+        #EXT-X-PLAYLIST-TYPE:VOD
+        #EXT-X-TARGETDURATION:7
+        #EXTINF:4.033333,
+        https://example.invalid/seg/0.ts
+        #EXTINF:4.333333,
+        https://example.invalid/seg/1.ts
+        #EXTINF:2.5,
+        https://example.invalid/seg/2.ts
+        #EXT-X-ENDLIST
+
+        """)
+    }
+
+    @Test func `no I-frame playlist for live, byte-range, fMP4, empty or non-playlist input`() {
+        let live = "#EXTM3U\r\n#EXT-X-TARGETDURATION:5\r\n#EXT-X-MEDIA-SEQUENCE:812\r\n#EXTINF:5.0,\r\nhttps://example.invalid/seg/812.ts\r\n"
+        let byteRanges = "#EXTM3U\n#EXT-X-TARGETDURATION:5\n#EXT-X-BYTERANGE:1000@0\n#EXTINF:5.0,\nhttps://example.invalid/all.ts\n#EXT-X-ENDLIST"
+        let fragmentedMP4 = "#EXTM3U\n#EXT-X-TARGETDURATION:5\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:5.0,\nhttps://example.invalid/0.m4s\n#EXT-X-ENDLIST"
+        let empty = "#EXTM3U\n#EXT-X-TARGETDURATION:5\n#EXT-X-ENDLIST"
+        for media in [live, byteRanges, fragmentedMP4, empty, "<html>not a playlist</html>"] {
+            #expect(HLSMasterPlaylist.iFramePlaylist(fromMedia: media) == nil)
+        }
+    }
+}

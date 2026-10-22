@@ -50,13 +50,27 @@ struct ResolverNetworkTests {
         }
     }
 
+    /// Scrubbing thumbnails depend on YouTube's media playlists staying whole TS segments with an
+    /// end list; if that changes, the I-frame playlists silently disappear.
+    @Test func `a VOD HLS stream comes with I-frame playlists for scrubbing thumbnails`() async throws {
+        let stream = try await YouTubeKitResolver().resolve(#require(VideoID("aqz-KE-bpKQ")))
+        guard case let .hls(filtered) = stream.kind else {
+            Issue.record("expected HLS, got \(stream.summary)")
+            return
+        }
+        #expect(filtered.iFramePlaylists.keys.sorted() == ["iframes-144.m3u8", "iframes-240.m3u8"])
+        let iFrames = try #require(filtered.iFramePlaylists["iframes-240.m3u8"])
+        #expect(iFrames.components(separatedBy: "#EXTINF").count - 1 > 100)
+        #expect(filtered.text.components(separatedBy: "#EXT-X-I-FRAME-STREAM-INF:").count - 1 == 2)
+    }
+
     /// For HLS: first segment of the highest variant; for muxed: first bytes of the file.
     private static func mediaStatus(_ stream: ResolvedStream) async -> Int {
         switch stream.kind {
         case .muxed:
             return await rangeStatus(stream.url)
-        case let .hls(playlist, _, _):
-            guard let variant = playlist.split(separator: "\n").last(where: { $0.hasPrefix("https://") }),
+        case let .hls(filtered):
+            guard let variant = filtered.text.split(separator: "\n").last(where: { $0.hasPrefix("https://") }),
                   let variantURL = URL(string: String(variant)),
                   let (data, _) = try? await URLSession.shared.data(from: variantURL),
                   let media = String(data: data, encoding: .utf8),
