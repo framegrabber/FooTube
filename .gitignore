@@ -6,3 +6,7 @@ DerivedData/
 buildServer.json
 xcuserdata/
 Config/Signing.local.xcconfig
+# Agent skill installs (local tooling, not part of the app)
+.agents/
+.claude/
+skills-lock.json
