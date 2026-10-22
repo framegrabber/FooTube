@@ -82,30 +82,45 @@ public struct YouTubeKitResolver: StreamResolver {
     }
 
     /// I-frame playlists for scrubbing thumbnails, built from the low variants' media playlists in
-    /// parallel (~0.2 s). One that can't be fetched or rewritten is left out, so the video just has
-    /// no thumbnails: a declared I-frame playlist AVPlayer can't load fails the whole video.
+    /// parallel (~0.2 s, never longer than `iFrameDeadline`). One that can't be fetched in time or
+    /// rewritten is left out, so the video just has no thumbnails: a declared I-frame playlist
+    /// AVPlayer can't load fails the whole video.
     private func iFramePlaylists(for sources: [HLSMasterPlaylist.IFrameSource], videoID: VideoID) async -> [Int: String] {
-        await withTaskGroup(of: (Int, String?).self) { group in
+        guard !sources.isEmpty else { return [:] }
+        // Children return a height and maybe a playlist; the deadline child returns nil.
+        let built = await withTaskGroup(of: (Int, String?)?.self) { group in
             for source in sources {
                 group.addTask { [session] in
-                    var request = URLRequest(url: source.mediaURL)
-                    request.timeoutInterval = 5
-                    guard let (data, response) = try? await session.data(for: request),
+                    guard let (data, response) = try? await session.data(from: source.mediaURL),
                           (response as? HTTPURLResponse)?.statusCode == 200 else { return (source.height, nil) }
                     return (source.height, HLSMasterPlaylist.iFramePlaylist(fromMedia: String(decoding: data, as: UTF8.self)))
                 }
             }
+            group.addTask {
+                try? await Task.sleep(for: Self.iFrameDeadline)
+                return nil
+            }
             var built: [Int: String] = [:]
-            for await (height, playlist) in group {
-                if let playlist {
-                    built[height] = playlist
-                } else {
-                    logger.info("\(videoID, privacy: .public): no I-frame playlist from the \(height)p variant")
+            var answered = 0
+            for await result in group {
+                guard let (height, playlist) = result else { break } // deadline: stop waiting
+                built[height] = playlist
+                answered += 1
+                if answered == sources.count {
+                    break
                 }
             }
-            return built
+            group.cancelAll() // the deadline timer, or fetches still running
+            return built.compactMapValues(\.self)
         }
+        for source in sources where built[source.height] == nil {
+            logger.info("\(videoID, privacy: .public): no I-frame playlist from the \(source.height)p variant")
+        }
+        return built
     }
+
+    /// Longest wait for the thumbnail sources before playback starts without thumbnails.
+    static let iFrameDeadline: Duration = .seconds(1)
 
     private func firstBytesStatus(_ url: URL) async -> Int {
         var request = URLRequest(url: url)
