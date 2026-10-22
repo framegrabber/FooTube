@@ -362,6 +362,16 @@ Each item: acceptance = observable on device/Simulator; verification = `scripts/
 | G7 | Play tab redundant | Removed (and the MVP test list); `-play` launch argument stays |
 | G8 | Profiles per Apple TV user | Deferred until the paid program (owner's decision) |
 
+## Phase 9: Scrubbing thumbnails (2026-10-22)
+
+Direction, assumptions and research: `docs/ideas/scrubbing-thumbnails.md`. Verification for every task: `scripts/check.sh task` + Simulator evidence; device checks by the owner.
+
+| ID | Task | Acceptance |
+|---|---|---|
+| H1 | Spike (throwaway): check segment starts; hard-wire an I-frame playlist for one video | The 144p and 240p TS segments of 3 videos start with an IDR (NAL type 5 before any type 1). Scanning or scrubbing in the Simulator shows thumbnails. No-go → stop and ask the owner (byte ranges or storyboards) |
+| H2 | Core: `HLSMasterPlaylist.filtered` declares `#EXT-X-I-FRAME-STREAM-INF` for the 144p and 240p H.264 variants (`footube-hls://iframe/<id>/<height>.m3u8`, the variant's `BANDWIDTH`, `RESOLUTION`, `CODECS`); a rewrite turns a media playlist into an `EXT-X-I-FRAMES-ONLY` playlist (same `EXTINF` durations and URIs) | Fixture tests: lines present only for available variants, none without a low H.264 variant; rewrite keeps every segment and duration, sets the I-frames-only header and `ENDLIST`; malformed input yields nil |
+| H3 | App: `PlaylistLoader` serves I-frame playlists on request (fetch + rewrite, failure → loading error, never blocks the master); logs each request with height and time since start | Simulator: thumbnails while scanning; log shows when AVKit first requests an I-frame playlist; "first frame after" not slower than before (5 runs each) |
+
 ---
 
 ## Checkpoint: Complete

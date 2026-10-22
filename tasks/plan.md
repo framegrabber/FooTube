@@ -117,6 +117,13 @@ From the library-capabilities idea list (owner picked 1–3). InnerTubeKit `More
 - **Search** (`SearchView.swift`): `.searchSuggestions` row under the keyboard.
 - [x] Verified in the Simulator (chapter row with thumbnails, Up next countdown + autoplay, suggestions); device check by owner pending
 
+### Phase 9: Scrubbing thumbnails (2026-10-22) — details in `tasks/todo.md` H1–H3
+Direction and assumptions: `docs/ideas/scrubbing-thumbnails.md`. AVKit draws scrubbing and scanning thumbnails only from I-frame playlists; YouTube's HLS has none. FooTube declares I-frame variants for the 144p and 240p H.264 variants and serves them lazily from `PlaylistLoader`, rewritten from the googlevideo media playlists (one whole TS segment per entry).
+- [ ] H1: Spike: segments start with an IDR; AVKit shows thumbnails from whole-segment I-frame entries (Simulator). No-go → back to the owner (byte ranges or storyboards)
+- [ ] H2: Core: I-frame lines in `HLSMasterPlaylist.filtered`, I-frame media-playlist rewrite, fixture tests
+- [ ] H3: App: lazy serving in `PlaylistLoader`, request logging, Simulator evidence, start-time comparison
+- [ ] Owner on the Apple TV HD: thumbnails while scrubbing, start time unchanged, scrubbing smooth
+
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |---|---|---|

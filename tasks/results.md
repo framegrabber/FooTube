@@ -48,3 +48,14 @@ Launched with `scripts/run-sim.sh -play <id>`; values from the debug diagnostics
 Not verifiable without a remote (Simulator has no CLI remote input): focus movement, pressing Skip Intro, Subscribe/Unsubscribe button, long-press context menu "Open channel", Menu to exit the player, seeking.
 
 Known gaps: made-for-kids videos fail (YouTubeKit returns no streams); some videos fail extraction (`p4aN7HXGlRk`, `V42hzL11Kpk`: `extractError` from YouTubeKit).
+
+## 2026-10-22 — H1 scrubbing-thumbnail spike in the `Apple TV` Simulator
+
+| Check | Method | Result |
+|---|---|---|
+| TS segments start with an IDR | First, middle and last segment of the 144p and 240p variants of `aqz-KE-bpKQ`, `zergV5YUDjk`, `5p7b-GCufX4` (18 segments), parsed for the first video NAL units | All 18: AUD, SPS, PPS, (SEI), IDR; every segment decodes on its own |
+| AVKit uses whole-segment I-frame entries | Throwaway: two `#EXT-X-I-FRAME-STREAM-INF` lines in the master, I-frame playlist rewritten from the media playlist on request; UI test pauses, steps and holds right on `aqz-KE-bpKQ` | Thumbnails above the scrubber at 00:31, 00:41, 00:58, 01:03 and while scanning (01:25) |
+| When AVKit asks | `NSLog` in the resource loader | ~0.8 s after the master loads, during start-up (not on first scrub); it chose 240p over 144p |
+| Start time | `first frame after` log, 5 launches each | After resolve: median 0.68 s with and without; totals 2.55 vs 2.42 s, difference within resolve (network) noise |
+
+Decision: go. Not yet known: start time and scrubbing smoothness on the Apple TV HD.
