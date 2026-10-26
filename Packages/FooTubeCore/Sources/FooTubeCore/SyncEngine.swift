@@ -26,9 +26,9 @@ public final class SyncEngine {
         case failed(SyncError)
     }
 
-    public static let maxAttempts = 3
+    public nonisolated static let maxAttempts = 3
     /// Per store `lastSyncAt`, in the engine's `UserDefaults`.
-    public static let stateKey = "sync.state.v1"
+    public nonisolated static let stateKey = "sync.state.v1"
 
     private let transport: any SyncTransport
     private let subscriptions: SubscriptionStore
@@ -69,7 +69,7 @@ public final class SyncEngine {
 
     /// Forgets every store's `lastSyncAt` (`-syncReset`); the next round unions local data with the
     /// Worker's like a first sync.
-    public static func resetState(in defaults: UserDefaults) {
+    public nonisolated static func resetState(in defaults: UserDefaults) {
         defaults.removeObject(forKey: stateKey)
     }
 

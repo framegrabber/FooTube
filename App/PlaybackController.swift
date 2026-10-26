@@ -12,7 +12,16 @@ final class PlaybackController {
         case failed(String)
     }
 
-    var session: PlayerSession?
+    var session: PlayerSession? {
+        didSet {
+            if oldValue != nil, session == nil {
+                onPlayerClosed?()
+            }
+        }
+    }
+
+    /// Called when the player closes (not when Up next replaces the session).
+    @ObservationIgnored var onPlayerClosed: (@MainActor () -> Void)?
     private(set) var status: Status = .idle
 
     private let resolver: any StreamResolver

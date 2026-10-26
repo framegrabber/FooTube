@@ -21,8 +21,6 @@ public struct SyncConfigurationStore {
         case reset
     }
 
-    /// The engine's bookkeeping (`lastSyncAt` per store, `SyncEngine.stateKey`).
-    private static let stateKey = "sync.state.v1"
     private static let urlKey = "sync.url.v1"
 
     /// This launch's arguments (`-name value` pairs) as UserDefaults parsed them.
@@ -60,7 +58,7 @@ public struct SyncConfigurationStore {
     /// Turns sync off: URL, token and sync state go; the stores' local data stays.
     public func reset() throws(SyncConfigurationError) {
         defaults.removeObject(forKey: Self.urlKey)
-        defaults.removeObject(forKey: Self.stateKey)
+        SyncEngine.resetState(in: defaults)
         try tokens.remove()
     }
 

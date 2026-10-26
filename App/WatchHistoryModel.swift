@@ -13,14 +13,25 @@ final class WatchHistoryModel {
     /// played first.
     private(set) var recentVideos: [VideoSummary]
 
+    /// Called after this model changed the store (`SyncModel` schedules a round).
+    @ObservationIgnored var onLocalChange: (@MainActor () -> Void)?
+
     private let store: WatchHistory
     private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "history")
 
     init(store: WatchHistory) {
         self.store = store
+        (entries, recentVideos) = Self.read(store)
+    }
+
+    /// Reads the store again after sync merged other devices' changes into it.
+    func reload() {
+        (entries, recentVideos) = Self.read(store)
+    }
+
+    private static func read(_ store: WatchHistory) -> ([VideoID: WatchEntry], [VideoSummary]) {
         let list = store.entries()
-        entries = Dictionary(list.map { ($0.videoID, $0) }) { newest, _ in newest }
-        recentVideos = [].appendingUnique(list.compactMap(\.video))
+        return (Dictionary(list.map { ($0.videoID, $0) }) { newest, _ in newest }, [].appendingUnique(list.compactMap(\.video)))
     }
 
     /// Fraction watched 0...1, nil if never played (live streams are never tracked).
@@ -47,6 +58,7 @@ final class WatchHistoryModel {
         store.clear()
         entries = [:]
         recentVideos = []
+        onLocalChange?()
     }
 
     /// Saves the position and moves the video to the front of `recentVideos`; ignored without a finite
@@ -60,6 +72,7 @@ final class WatchHistoryModel {
                     recent.insert(summary, at: 0)
                     recentVideos = Array(recent.prefix(WatchHistory.capacity))
                 }
+                onLocalChange?()
             }
         } catch {
             let line = "Couldn't save watch progress of \(id): \(error.localizedDescription)"

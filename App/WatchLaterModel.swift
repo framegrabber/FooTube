@@ -10,10 +10,18 @@ final class WatchLaterModel {
     private(set) var items: [VideoSummary]
     private(set) var lastError: String?
 
+    /// Called after this model changed the store (`SyncModel` schedules a round).
+    @ObservationIgnored var onLocalChange: (@MainActor () -> Void)?
+
     private let store: WatchLaterStore
 
     init(store: WatchLaterStore) {
         self.store = store
+        items = store.items()
+    }
+
+    /// Reads the store again after sync merged other devices' changes into it.
+    func reload() {
         items = store.items()
     }
 
@@ -31,6 +39,7 @@ final class WatchLaterModel {
             }
             items = store.items()
             lastError = nil
+            onLocalChange?()
         } catch {
             lastError = String(localized: "Couldn't save Watch Later: \(error.localizedDescription)")
         }
@@ -40,5 +49,6 @@ final class WatchLaterModel {
         store.clear()
         items = []
         lastError = nil
+        onLocalChange?()
     }
 }
