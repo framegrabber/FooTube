@@ -36,6 +36,8 @@ public protocol SyncDocument: Codable, Hashable, Sendable {
     var format: Int { get }
     /// `merge(self, remote, lastSyncAt:now:)` from `SyncMerge.swift`.
     func merged(with remote: Self?, lastSyncAt: Date?, now: Date) -> Self
+    /// Entries (settings: overrides), removal markers included; for logs.
+    var entryCount: Int { get }
 }
 
 /// What the sync engine needs from a local store: read its document and replace it with a merged one.
@@ -230,7 +232,7 @@ public enum SyncCoding {
         }
     }
 
-    private static func decoder() -> JSONDecoder {
+    static func decoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
@@ -279,5 +281,29 @@ extension UserDefaults {
             return document
         }
         return syncDocument(Document.self, forKey: key) ?? document
+    }
+}
+
+public extension SubscriptionsDocument {
+    var entryCount: Int {
+        entries.count
+    }
+}
+
+public extension WatchLaterDocument {
+    var entryCount: Int {
+        entries.count
+    }
+}
+
+public extension HistoryDocument {
+    var entryCount: Int {
+        entries.count
+    }
+}
+
+public extension SkipSettingsDocument {
+    var entryCount: Int {
+        overrides.count
     }
 }

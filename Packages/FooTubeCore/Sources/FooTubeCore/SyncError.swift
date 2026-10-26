@@ -12,6 +12,9 @@ public enum SyncError: Error, Hashable, Sendable {
     case unsupportedFormat(Int)
     /// Every attempt of a round ended in `412`.
     case conflictPersisted
+    /// The Worker's document can't be read (no `format`, wrong fields), or the local one can't be
+    /// written; the round stops without overwriting anything on the Worker.
+    case invalidDocument(detail: String)
 
     public var message: String {
         switch self {
@@ -20,6 +23,7 @@ public enum SyncError: Error, Hashable, Sendable {
         case let .server(status): "Sync Worker answered HTTP \(status)"
         case let .unsupportedFormat(format): "Sync document has format \(format), newer than this build"
         case .conflictPersisted: "Sync kept conflicting with other devices"
+        case let .invalidDocument(detail): "Sync document invalid: \(detail)"
         }
     }
 }

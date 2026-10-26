@@ -1,6 +1,5 @@
 @testable import FooTubeCore
 import Foundation
-import Synchronization
 import Testing
 
 /// What the stores write into their sync documents and how they take merged ones back.
@@ -10,23 +9,6 @@ struct SyncStoreDocumentTests {
     let blender = ChannelRef(id: "UCSMOQeBJ2RAnuFungnQOxLg", name: "Blender")
     let first = VideoID("r1jOsar2zV4")!
     let second = VideoID("aiDHXKRxLeQ")!
-
-    /// A clock the test moves forward.
-    final class Clock: Sendable {
-        private let current: Mutex<Date>
-
-        init(_ date: Date) {
-            current = Mutex(date)
-        }
-
-        func advance(by seconds: TimeInterval) {
-            current.withLock { $0 += seconds }
-        }
-
-        var now: @Sendable () -> Date {
-            { self.current.withLock { $0 } }
-        }
-    }
 
     private func freshDefaults() -> UserDefaults {
         let suite = "footube-tests-\(UUID().uuidString)"
@@ -40,7 +22,7 @@ struct SyncStoreDocumentTests {
     }
 
     @Test func `unsubscribing leaves a hidden removal marker that re-subscribing clears`() throws {
-        let clock = Clock(start)
+        let clock = TestClock(start)
         let store = SubscriptionStore(defaults: freshDefaults(), now: clock.now)
         try store.subscribe(blender, avatar: nil)
         clock.advance(by: 10)
@@ -57,7 +39,7 @@ struct SyncStoreDocumentTests {
     }
 
     @Test func `subscribing again with the same data is not a change`() throws {
-        let clock = Clock(start)
+        let clock = TestClock(start)
         let store = SubscriptionStore(defaults: freshDefaults(), now: clock.now)
         try store.subscribe(blender, avatar: nil)
         clock.advance(by: 10)
@@ -68,7 +50,7 @@ struct SyncStoreDocumentTests {
     }
 
     @Test func `removing from watch later leaves a hidden marker that re-adding clears`() throws {
-        let clock = Clock(start)
+        let clock = TestClock(start)
         let store = WatchLaterStore(defaults: freshDefaults(), now: clock.now)
         try store.add(summary(first))
         clock.advance(by: 10)
@@ -84,7 +66,7 @@ struct SyncStoreDocumentTests {
     }
 
     @Test func `clearing watch later marks every video removed`() throws {
-        let clock = Clock(start)
+        let clock = TestClock(start)
         let store = WatchLaterStore(defaults: freshDefaults(), now: clock.now)
         try store.add(summary(first))
         try store.add(summary(second))
@@ -104,7 +86,7 @@ struct SyncStoreDocumentTests {
     }
 
     @Test func `saving drops removal markers older than 90 days`() throws {
-        let clock = Clock(start)
+        let clock = TestClock(start)
         let store = WatchLaterStore(defaults: freshDefaults(), now: clock.now)
         try store.add(summary(first))
         try store.remove(first)
@@ -136,7 +118,7 @@ struct SyncStoreDocumentTests {
     }
 
     @Test func `restoring default skip settings is a change`() {
-        let clock = Clock(start)
+        let clock = TestClock(start)
         let store = SkipSettingsStore(defaults: freshDefaults(), now: clock.now)
         #expect(store.document().changedAt == nil)
         var settings = SkipSettings.default
