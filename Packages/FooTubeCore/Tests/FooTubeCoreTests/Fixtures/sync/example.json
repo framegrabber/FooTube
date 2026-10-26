@@ -1,0 +1,99 @@
+{
+  "source": "wrangler dev of FooTubeSyncBackend 18d947c, recorded 2026-10-26T21:04:39.628Z by scripts/record-sync-fixtures.mjs",
+  "exchanges": [
+    {
+      "name": "get-never-written",
+      "request": {
+        "method": "GET",
+        "path": "/v1/stores/subscriptions",
+        "headers": {},
+        "bodyBytes": 0
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": "{\"error\":\"not_found\",\"message\":\"Store was never written\"}"
+      }
+    },
+    {
+      "name": "put-create",
+      "request": {
+        "method": "PUT",
+        "path": "/v1/stores/subscriptions",
+        "headers": {
+          "content-type": "application/json",
+          "if-none-match": "*"
+        },
+        "body": "{\"format\":1,\"entries\":[{\"id\":\"UCsXVk37bltHxD1rDPwtNM8Q\",\"name\":\"Kurzgesagt – In a Nutshell\",\"changedAt\":\"2026-10-26T21:00:00.000Z\"}]}",
+        "bodyBytes": 135
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "etag": "\"1\""
+        },
+        "body": ""
+      }
+    },
+    {
+      "name": "put-replace",
+      "request": {
+        "method": "PUT",
+        "path": "/v1/stores/subscriptions",
+        "headers": {
+          "content-type": "application/json",
+          "if-match": "\"1\""
+        },
+        "body": "{\"format\":1,\"entries\":[{\"id\":\"UCsXVk37bltHxD1rDPwtNM8Q\",\"name\":\"Kurzgesagt – In a Nutshell\",\"changedAt\":\"2026-10-26T21:00:00.000Z\"},{\"id\":\"UCBJycsmduvYEL83R_U4JriQ\",\"name\":\"Marques Brownlee\",\"changedAt\":\"2026-10-26T21:05:00.000Z\"}]}",
+        "bodyBytes": 234
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "etag": "\"2\""
+        },
+        "body": ""
+      }
+    },
+    {
+      "name": "put-replace-stale",
+      "request": {
+        "method": "PUT",
+        "path": "/v1/stores/subscriptions",
+        "headers": {
+          "content-type": "application/json",
+          "if-match": "\"1\""
+        },
+        "body": "{\"format\":1,\"entries\":[{\"id\":\"UCsXVk37bltHxD1rDPwtNM8Q\",\"name\":\"Kurzgesagt – In a Nutshell\",\"changedAt\":\"2026-10-26T21:00:00.000Z\",\"removedAt\":\"2026-10-26T21:06:00.000Z\"}]}",
+        "bodyBytes": 174
+      },
+      "response": {
+        "status": 412,
+        "headers": {
+          "etag": "\"2\"",
+          "content-type": "application/json"
+        },
+        "body": "{\"format\":1,\"entries\":[{\"id\":\"UCsXVk37bltHxD1rDPwtNM8Q\",\"name\":\"Kurzgesagt – In a Nutshell\",\"changedAt\":\"2026-10-26T21:00:00.000Z\"},{\"id\":\"UCBJycsmduvYEL83R_U4JriQ\",\"name\":\"Marques Brownlee\",\"changedAt\":\"2026-10-26T21:05:00.000Z\"}]}"
+      }
+    },
+    {
+      "name": "get-written",
+      "request": {
+        "method": "GET",
+        "path": "/v1/stores/subscriptions",
+        "headers": {},
+        "bodyBytes": 0
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "etag": "\"2\"",
+          "content-type": "application/json"
+        },
+        "body": "{\"format\":1,\"entries\":[{\"id\":\"UCsXVk37bltHxD1rDPwtNM8Q\",\"name\":\"Kurzgesagt – In a Nutshell\",\"changedAt\":\"2026-10-26T21:00:00.000Z\"},{\"id\":\"UCBJycsmduvYEL83R_U4JriQ\",\"name\":\"Marques Brownlee\",\"changedAt\":\"2026-10-26T21:05:00.000Z\"}]}"
+      }
+    }
+  ]
+}
