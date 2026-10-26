@@ -33,8 +33,13 @@ public enum SyncMerge {
         for record in remote ?? [] {
             merged[record.key] = merged[record.key].map { winner($0, record) } ?? record
         }
+        return withoutExpiredMarkers(Array(merged.values), now: now)
+    }
+
+    /// Drops removal markers older than `markerLifetime`; stores also apply it when they save.
+    static func withoutExpiredMarkers<Record: MarkedRecord>(_ records: [Record], now: Date) -> [Record] {
         let cutoff = now - markerLifetime
-        return merged.values.filter { record in record.removedAt.map { $0 >= cutoff } ?? true }
+        return records.filter { record in record.removedAt.map { $0 >= cutoff } ?? true }
     }
 
     private static func winner<Record: MarkedRecord>(_ first: Record, _ second: Record) -> Record {

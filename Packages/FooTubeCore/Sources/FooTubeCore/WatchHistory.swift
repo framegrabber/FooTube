@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// How far one video was watched.
 public struct WatchEntry: Codable, Hashable, Sendable {
@@ -44,12 +45,13 @@ public struct WatchEntry: Codable, Hashable, Sendable {
     }
 }
 
-/// Watch progress stored only on this device, newest first, at most `capacity` videos.
+/// Watch progress kept on this device (synced to the household's Worker when sync is on), newest
+/// first, at most `capacity` videos.
 ///
-/// Kept in `UserDefaults` as a JSON list like `SubscriptionStore`: on tvOS that is the persistent
-/// local store; files in Application Support or Caches can be purged while the app is not running.
-/// 500 entries are about 55 KB.
-public struct WatchHistory {
+/// Kept in `UserDefaults` as a `HistoryDocument` like `SubscriptionStore`: on tvOS that is the
+/// persistent local store; files in Application Support or Caches can be purged while the app is not
+/// running. 500 entries are about 55 KB.
+public struct WatchHistory: SyncableStore {
     public static let capacity = 500
     /// Fraction of the duration at which a video counts as watched.
     public static let watchedFraction = 0.9
@@ -57,17 +59,20 @@ public struct WatchHistory {
     public static let endMargin = 30.0
 
     private let defaults: UserDefaults
-    private let key = "watchHistory.v1"
+    private let now: @Sendable () -> Date
+    private let key = "watchHistory.v2"
+    private let legacyKey = "watchHistory.v1"
+    private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "storage")
 
-    public init(defaults: UserDefaults = .standard) {
+    /// `now` stamps `clear()`; `record` takes its date as a parameter.
+    public init(defaults: UserDefaults = .standard, now: @escaping @Sendable () -> Date = { .now }) {
         self.defaults = defaults
+        self.now = now
     }
 
     /// Newest first.
     public func entries() -> [WatchEntry] {
-        guard let data = defaults.data(forKey: key),
-              let list = try? JSONDecoder().decode([WatchEntry].self, from: data) else { return [] }
-        return list
+        document().entries
     }
 
     public func entry(for id: VideoID) -> WatchEntry? {
@@ -93,23 +98,42 @@ public struct WatchHistory {
     ) throws -> WatchEntry? {
         guard duration.isFinite, duration > 0, position.isFinite else { return nil }
         let clamped = reachedEnd ? duration : min(max(position, 0), duration)
-        var list = entries()
-        let previous = list.firstIndex { $0.videoID == id }.map { list.remove(at: $0) }
+        var document = document()
+        let previous = document.entries.firstIndex { $0.videoID == id }.map { document.entries.remove(at: $0) }
         let entry = WatchEntry(
             videoID: id,
             position: clamped,
             duration: duration,
-            updatedAt: date,
+            updatedAt: SyncCoding.timestamp(date),
             watched: (previous?.watched ?? false) || reachedEnd || clamped >= duration * Self.watchedFraction,
             video: video ?? previous?.video,
         )
-        list.insert(entry, at: 0)
-        try defaults.set(JSONEncoder().encode(Array(list.prefix(Self.capacity))), forKey: key)
+        document.entries.insert(entry, at: 0)
+        document.entries = Array(document.entries.prefix(Self.capacity))
+        try replace(document)
         return entry
     }
 
-    /// Forgets every entry: positions, watched marks and summaries.
+    /// Forgets every entry: positions, watched marks and summaries; with sync on, on every device
+    /// (`clearedAt`).
     public func clear() {
-        defaults.removeObject(forKey: key)
+        do {
+            try replace(HistoryDocument(clearedAt: SyncCoding.timestamp(now()), entries: []))
+        } catch {
+            logger.error("Couldn't clear watch history: \(error.message, privacy: .public)")
+        }
+    }
+
+    /// For sync. Migrates `watchHistory.v1` on first use; entries keep their `updatedAt`.
+    public func document() -> HistoryDocument {
+        defaults.syncDocument(HistoryDocument.self, forKey: key, migratingFrom: legacyKey, logger: logger) {
+            let list = defaults.data(forKey: legacyKey).flatMap { try? JSONDecoder().decode([WatchEntry].self, from: $0) } ?? []
+            return HistoryDocument(entries: Array(list.prefix(Self.capacity)))
+        }
+    }
+
+    /// For sync: saves a merged document as is.
+    public func replace(_ document: HistoryDocument) throws(SyncDocumentError) {
+        try defaults.setSyncDocument(document, forKey: key)
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// The stores the sync Worker keeps (Contract: `/v1/stores/:name`); the raw value is the path segment.
 public enum SyncStoreName: String, CaseIterable, Hashable, Sendable {
@@ -255,5 +256,28 @@ extension UserDefaults {
 
     func setSyncDocument(_ document: some SyncDocument, forKey key: String) throws(SyncDocumentError) {
         try set(SyncCoding.encode(document), forKey: key)
+    }
+
+    /// The document under `key`, empty if absent or unreadable. While data of the previous format is
+    /// stored under `legacyKey`, first moves it over once with `migrate` (unless `key` already holds a
+    /// document) and removes `legacyKey`.
+    func syncDocument<Document: SyncDocument>(
+        _: Document.Type,
+        forKey key: String,
+        migratingFrom legacyKey: String,
+        logger: Logger,
+        migrate: () -> Document,
+    ) -> Document {
+        guard object(forKey: legacyKey) != nil else { return syncDocument(Document.self, forKey: key) ?? .empty }
+        let document = syncDocument(Document.self, forKey: key) ?? migrate()
+        do {
+            try setSyncDocument(document, forKey: key)
+            removeObject(forKey: legacyKey)
+            logger.info("Migrated \(legacyKey, privacy: .public) to \(key, privacy: .public)")
+        } catch {
+            logger.error("Couldn't migrate \(legacyKey, privacy: .public): \(error.message, privacy: .public)")
+            return document
+        }
+        return syncDocument(Document.self, forKey: key) ?? document
     }
 }

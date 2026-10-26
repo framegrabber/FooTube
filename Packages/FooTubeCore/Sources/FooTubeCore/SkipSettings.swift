@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// What playback does with a SponsorBlock segment of one category.
 public enum SkipBehavior: String, CaseIterable, Codable, Hashable, Sendable {
@@ -38,29 +39,46 @@ public struct SkipSettings: Hashable, Sendable {
     }
 }
 
-/// `SkipSettings` in `UserDefaults`; only differences from the default are stored, so unknown or
-/// unreadable values fall back to it.
-public struct SkipSettingsStore {
+/// `SkipSettings` in `UserDefaults` as a `SkipSettingsDocument`; only differences from the default
+/// are stored, so unknown or unreadable values fall back to it. Every `save` is a change for sync,
+/// also saving the default ("Restore Defaults").
+public struct SkipSettingsStore: SyncableStore {
     private let defaults: UserDefaults
-    private let key = "skipSettings.v1"
+    private let now: @Sendable () -> Date
+    private let key = "skipSettings.v2"
+    private let legacyKey = "skipSettings.v1"
+    private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "storage")
 
-    public init(defaults: UserDefaults = .standard) {
+    /// `now` stamps changes and the one-time migration from `skipSettings.v1`.
+    public init(defaults: UserDefaults = .standard, now: @escaping @Sendable () -> Date = { .now }) {
         self.defaults = defaults
+        self.now = now
     }
 
     public func load() -> SkipSettings {
-        guard let raw = defaults.dictionary(forKey: key) as? [String: String] else { return .default }
-        let pairs = raw.compactMap { key, value in
-            SponsorCategory(rawValue: key).flatMap { category in SkipBehavior(rawValue: value).map { (category, $0) } }
-        }
-        return SkipSettings(Dictionary(pairs) { first, _ in first })
+        document().settings
     }
 
     public func save(_ settings: SkipSettings) {
-        let raw = Dictionary(uniqueKeysWithValues: SponsorCategory.allCases.compactMap { category -> (String, String)? in
-            let behavior = settings.behavior(for: category)
-            return behavior == SkipSettings.defaultBehavior(for: category) ? nil : (category.rawValue, behavior.rawValue)
-        })
-        defaults.set(raw, forKey: key)
+        do {
+            try replace(SkipSettingsDocument(settings, changedAt: SyncCoding.timestamp(now())))
+        } catch {
+            logger.error("Couldn't save skip settings: \(error.message, privacy: .public)")
+        }
+    }
+
+    /// For sync. Migrates `skipSettings.v1` on first use; settings that differ from the default get
+    /// `changedAt` = migration time, default ones stay "never changed".
+    public func document() -> SkipSettingsDocument {
+        defaults.syncDocument(SkipSettingsDocument.self, forKey: key, migratingFrom: legacyKey, logger: logger) {
+            let raw = defaults.dictionary(forKey: legacyKey) as? [String: String] ?? [:]
+            let settings = SkipSettingsDocument(changedAt: nil, overrides: raw).settings
+            return SkipSettingsDocument(settings, changedAt: settings.isDefault ? nil : SyncCoding.timestamp(now()))
+        }
+    }
+
+    /// For sync: saves a merged document as is.
+    public func replace(_ document: SkipSettingsDocument) throws(SyncDocumentError) {
+        try defaults.setSyncDocument(document, forKey: key)
     }
 }

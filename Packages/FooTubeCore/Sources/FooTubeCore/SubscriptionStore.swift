@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// A subscribed channel.
 public struct Subscription: Identifiable, Codable, Hashable, Sendable {
@@ -17,52 +18,84 @@ public struct Subscription: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
-/// Subscriptions stored only on this device. No Google account involved.
+/// Subscriptions kept on this device (and synced to the household's Worker when sync is on). No
+/// Google account involved.
 ///
-/// Kept in `UserDefaults` as a small JSON list: on tvOS that is the persistent local store
+/// Kept in `UserDefaults` as a `SubscriptionsDocument`: on tvOS that is the persistent local store
 /// (up to ~500 KB); files in Application Support or Caches can be purged while the app is not
-/// running. A few hundred channels fit comfortably.
-public struct SubscriptionStore {
+/// running. A few hundred channels fit comfortably. Unsubscribing leaves a removal marker that the
+/// readers hide, so another device's sync can't bring the channel back.
+public struct SubscriptionStore: SyncableStore {
     private let defaults: UserDefaults
-    private let key = "subscriptions.v1"
+    private let now: @Sendable () -> Date
+    private let key = "subscriptions.v2"
+    private let legacyKey = "subscriptions.v1"
+    private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "storage")
 
-    public init(defaults: UserDefaults = .standard) {
+    /// `now` stamps changes and the one-time migration from `subscriptions.v1`.
+    public init(defaults: UserDefaults = .standard, now: @escaping @Sendable () -> Date = { .now }) {
         self.defaults = defaults
+        self.now = now
     }
 
     /// Alphabetical by name.
     public func channels() -> [Subscription] {
-        guard let data = defaults.data(forKey: key),
-              let list = try? JSONDecoder().decode([Subscription].self, from: data) else { return [] }
-        return list.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        document().entries
+            .filter { $0.removedAt == nil }
+            .map(\.subscription)
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     public func isSubscribed(_ channelID: String) -> Bool {
-        channels().contains { $0.id == channelID }
+        document().entries.contains { $0.id == channelID && $0.removedAt == nil }
     }
 
     /// Adds the channel, or refreshes its name/avatar if already subscribed.
     public func subscribe(_ channel: ChannelRef, avatar: URL?) throws {
-        var list = channels()
-        let existing = list.firstIndex { $0.id == channel.id }
-        let entry = Subscription(
-            id: channel.id,
-            name: channel.name ?? existing.map { list[$0].name } ?? channel.id,
-            avatar: avatar ?? existing.flatMap { list[$0].avatar },
-        )
-        if let existing {
-            list[existing] = entry
-        } else {
-            list.append(entry)
+        var document = document()
+        let index = document.entries.firstIndex { $0.id == channel.id }
+        let live = index.map { document.entries[$0] }.flatMap { $0.removedAt == nil ? $0 : nil }
+        let name = channel.name ?? live?.name ?? channel.id
+        let avatar = avatar ?? live?.avatar
+        if let live, live.name == name, live.avatar == avatar {
+            return
         }
-        try save(list)
+        let record = SubscriptionRecord(id: channel.id, name: name, avatar: avatar, changedAt: SyncCoding.timestamp(now()))
+        if let index {
+            document.entries[index] = record
+        } else {
+            document.entries.append(record)
+        }
+        try save(document)
     }
 
+    /// Turns the subscription into a removal marker.
     public func unsubscribe(_ channelID: String) throws {
-        try save(channels().filter { $0.id != channelID })
+        var document = document()
+        guard let index = document.entries.firstIndex(where: { $0.id == channelID && $0.removedAt == nil }) else { return }
+        let date = SyncCoding.timestamp(now())
+        document.entries[index].changedAt = date
+        document.entries[index].removedAt = date
+        try save(document)
     }
 
-    private func save(_ list: [Subscription]) throws {
-        try defaults.set(JSONEncoder().encode(list), forKey: key)
+    /// For sync: every entry including removal markers. Migrates `subscriptions.v1` on first use.
+    public func document() -> SubscriptionsDocument {
+        defaults.syncDocument(SubscriptionsDocument.self, forKey: key, migratingFrom: legacyKey, logger: logger) {
+            let date = SyncCoding.timestamp(now())
+            let list = defaults.data(forKey: legacyKey).flatMap { try? JSONDecoder().decode([Subscription].self, from: $0) } ?? []
+            let records = list.map { SubscriptionRecord(id: $0.id, name: $0.name, avatar: $0.avatar, changedAt: date) }
+            return SubscriptionsDocument(entries: records.sorted { $0.id < $1.id })
+        }
+    }
+
+    /// For sync: saves a merged document as is.
+    public func replace(_ document: SubscriptionsDocument) throws(SyncDocumentError) {
+        try defaults.setSyncDocument(document, forKey: key)
+    }
+
+    private func save(_ document: SubscriptionsDocument) throws(SyncDocumentError) {
+        let entries = SyncMerge.withoutExpiredMarkers(document.entries, now: now())
+        try replace(SubscriptionsDocument(entries: entries.sorted { $0.id < $1.id }))
     }
 }
