@@ -18,7 +18,7 @@ While browsing YouTube on a laptop or phone, I click a bookmark and the video la
 
 | Route | Auth | Request | Responses |
 |---|---|---|---|
-| `GET /add?v=<id>&t=<title>` | none | from the bookmarklet, token in the URL fragment | `200` HTML page (below); no data is read or written by this request |
+| `GET /add` | none | from the bookmarklet; video ID, title and token only in the URL fragment (`#v=<id>&t=<title>&k=<token>`) | `200` HTML page (below); no data is read or written by this request |
 | `POST /v1/inbox` | `Bearer INBOX_TOKEN` or `SYNC_TOKEN` | `{"videoID": "<11 chars [A-Za-z0-9_-]>", "title": "<≤ 200 chars>"?}`, `application/json`, ≤ 1 KiB | `201` added, `200` already in the inbox (same `videoID`, title updated), `400 invalid_video_id`, `409 inbox_full` (100 items), `401`, `411`/`413`/`415` as for stores |
 | `GET /v1/inbox` | `Bearer SYNC_TOKEN` only | — | `200 {"items":[{"seq": n, "videoID", "title"?, "addedAt"}]}` oldest first |
 | `DELETE /v1/inbox?through=<seq>` | `Bearer SYNC_TOKEN` only | — | `204`; removes items with `seq ≤ through` (idempotent) |
@@ -29,7 +29,9 @@ While browsing YouTube on a laptop or phone, I click a bookmark and the video la
 
 **D1:** migration `0002_inbox.sql`: `inbox(seq INTEGER PRIMARY KEY AUTOINCREMENT, video_id TEXT UNIQUE NOT NULL, title TEXT, added_at TEXT NOT NULL)`.
 
-**Bookmarklet:** `npm run bookmarklet` prints `javascript:` code with the Worker URL and `INBOX_TOKEN` filled in from `.env.deployed` (or `--url`/`--token`). It extracts the ID from `youtube.com/watch?v=`, `youtube.com/shorts/<id>`, `youtu.be/<id>` and `m.youtube.com`, takes the title from `document.title` without the " - YouTube" suffix, and opens `<worker>/add?v=<id>&t=<title>#<token>` in a new tab. On other pages it shows `alert("Not a YouTube video")`. The token is never sent as a query parameter, so it doesn't appear in Worker logs.
+**Bookmarklet:** `npm run bookmarklet` writes `javascript:` code with the Worker URL and `INBOX_TOKEN` filled in from `.env.deployed` (or `--url`/`--token`) to the gitignored `.bookmarklet.txt`. It extracts the ID from `youtube.com/watch?v=`, `youtube.com/shorts/<id>`, `youtu.be/<id>` and `m.youtube.com`, takes the title from `document.title` without the " - YouTube" suffix and the `(n) ` notification prefix, and opens `<worker>/add#v=<id>&t=<title>&k=<token>` in a new tab. On other pages it shows `alert("Not a YouTube video")`. Nothing is sent in the path or query, so neither the token nor the video ID or title reaches Worker logs; the page removes the fragment before posting.
+
+**As implemented** (choices this spec left open, recorded in `FooTubeSyncBackend/SPEC.md` → Browser inbox): malformed JSON → `400 invalid_video_id`; titles trimmed, cut to 200 characters, dropped if empty; a repeat without a title keeps the stored one; `201`/`200` have empty bodies; `DELETE` without a valid `through` → `400 invalid_request`; `Cache-Control: no-store` on `GET /v1/inbox`; Workers invocation logs and traces are off, only the Worker's own allowlisted log line remains.
 
 ## Client (FooTubeCore + app)
 - During each Watch Later sync round, after a successful `PUT` (or when nothing needed pushing): `GET /v1/inbox`; each item not already live in Watch Later becomes an entry with `addedAt` = `changedAt` = the item's `addedAt`, `video` = a `VideoSummary` with the ID, the title (or the ID if none) and the standard `i.ytimg.com` thumbnail; the merged Watch Later is pushed; then `DELETE /v1/inbox?through=<last seq>`. If two devices fold the same items, the Watch Later merge deduplicates them by video ID.
@@ -62,6 +64,7 @@ As `FooTubeSyncBackend/SPEC.md` and `SPEC-sync-client.md`. New files: `FooTubeSy
 - A browser extension: a bookmarklet needs no store, no review, no updates.
 
 ## Decisions to review
-- **Token in the fragment of a page on the Worker's origin**, not an in-page `fetch` from youtube.com: YouTube's CSP likely blocks cross-origin requests from bookmarklets [unverified; checked during implementation], and the fragment never reaches server logs.
+- **Token in the fragment of a page on the Worker's origin**, not an in-page `fetch` from youtube.com. Checked: YouTube's CSP has no `connect-src`/`default-src`, so an in-page fetch would not be blocked; it would still need CORS on the Worker and would expose the token to YouTube's scripts, so the new-tab design stays.
+- **Video ID and title in the fragment too** (changed during implementation), so no inbox data appears in any URL the Worker or Cloudflare logs.
 - **Title passed from the page** so Watch Later shows something useful before the catalog fills in details.
 - **Inbox cap 100**, idempotent per video ID.
