@@ -14,11 +14,11 @@ Anyone who builds and sideloads FooTube onto their own Apple TV: technically cap
 
 ## Product Purpose
 
-Watch YouTube on Apple TV without ads, without a Google account and without tracking. Streams are resolved on the device and played in Apple's native player; subscriptions, history and Watch Later stay on the Apple TV. Success: videos start quickly, play smoothly at up to 1080p H.264 on an Apple TV HD, and finding and following channels works without any account.
+Watch YouTube on Apple TV without ads, without a Google account and without tracking. Streams are resolved on the device and played in Apple's native player; subscriptions, history and Watch Later stay on the Apple TV, optionally synced between the household's Apple TVs through a server the builder runs. Success: videos start quickly, play smoothly at up to 1080p H.264 on an Apple TV HD, and finding and following channels works without any account.
 
 ## Positioning
 
-No web player, no server, no account: extraction happens on-device and playback is `AVPlayerViewController`, so there are no ad requests and no watch data leaves the device (except the SponsorBlock hash-prefix lookup). Built for the oldest supported hardware (Apple TV HD, A8, H.264 only), so it runs on every Apple TV with tvOS 18+. Self-built and sideloaded; not on the App Store.
+No web player, no third-party server, no account: extraction happens on-device and playback is `AVPlayerViewController`, so there are no ad requests and no watch data leaves the household (except the SponsorBlock hash-prefix lookup); the only server is the optional sync Worker the builder deploys. Built for the oldest supported hardware (Apple TV HD, A8, H.264 only), so it runs on every Apple TV with tvOS 18+. Self-built and sideloaded; not on the App Store.
 
 ## Operating Context
 
@@ -31,8 +31,8 @@ No web player, no server, no account: extraction happens on-device and playback 
 
 - Features: account-free subscriptions feed with channel sidebar filter; search with live suggestions and matching channels; channel pages with Subscribe; native player with scrubbing, info panel, original audio track, subtitles off by default; SponsorBlock (auto-skip `sponsor`, Skip button for other categories); chapters from the description; Up next after a 10-second countdown; resume, History, Watch Later.
 - Hardware: video `avc1` ≤ 1080p and AAC audio only; A8 CPU, 2 GB RAM, so the UI stays light and thumbnail grids must scroll smoothly.
-- State lives in `UserDefaults` on the device. No sync (iCloud needs the paid developer program); no Takeout import.
-- Network hosts: YouTube and SponsorBlock only. Remote fallbacks, other hosts, new dependencies and Google login are ask-first (SPEC → Boundaries).
+- State lives in `UserDefaults` on the device, optionally synced to the builder's own Cloudflare Worker (iCloud would need the paid developer program); no Takeout import.
+- Network hosts: YouTube, SponsorBlock and, when configured, the builder's sync Worker only. Remote fallbacks, other hosts, new dependencies and Google login are ask-first (SPEC → Boundaries).
 - Known limits: made-for-kids videos don't play; relative upload dates are parsed only in English and German; YouTube API changes can break playback or search until upstream libraries catch up.
 - Not affiliated with YouTube or Google; use is against YouTube's Terms of Service, stated plainly in the README.
 
@@ -53,7 +53,7 @@ No web player, no server, no account: extraction happens on-device and playback 
 ## Product Principles
 
 1. Native over novel: if tvOS has a component or convention for it, use that; the remote and focus behave exactly as in Apple's apps.
-2. Nothing leaves the device: no account, no server, no telemetry; new hosts or logins are not a design option.
+2. Nothing leaves the household: no account, no third-party server, no telemetry; the only server is the one the builder runs. New hosts or logins are not a design option.
 3. Design for the weakest box: everything must feel smooth on an Apple TV HD at 1080p.
 4. The video is the product: the UI gets out of the way of finding and watching.
 5. Honest about limits: caveats, breakage risk and unsupported content are stated, not hidden.

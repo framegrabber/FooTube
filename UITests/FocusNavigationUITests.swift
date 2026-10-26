@@ -83,6 +83,24 @@ final class FocusNavigationUITests: XCTestCase {
         XCTAssertTrue(app.buttons.matching(videoCard).firstMatch.exists, "search results were cleared")
     }
 
+    /// Settings: the Sync section shows a known state (whatever this Simulator is configured for: Off
+    /// without `-syncURL`/`-syncToken`) and Sync Now only while sync is configured.
+    func testSettingsShowsSyncStatus() {
+        let app = launch([])
+        press(.up, times: 2) // tab bar
+        XCTAssertTrue(move(.right, until: NSPredicate(format: "label == 'Settings'"), in: app), "Settings tab not reached: \(focused(app).label)")
+        press(.down)
+        let status = NSPredicate(format: "label BEGINSWITH 'Status,'")
+        XCTAssertTrue(move(.down, until: status, in: app, limit: 15), "Status row not reached: \(focused(app).label)")
+        let settled = NSPredicate(format: "NOT (label CONTAINS 'Syncing')")
+        XCTAssertTrue(settled.evaluate(with: focused(app)) || XCTWaiter().wait(for: [expectation(for: settled, evaluatedWith: focused(app))], timeout: 15) == .completed)
+        let label = focused(app).label
+        let known = ["Off", "Synced", "Offline, will retry", "Sync failed, will retry", "Token rejected", "Update FooTube on this device"]
+        XCTAssertTrue(known.contains { label.contains($0) }, "unexpected sync state: \(label)")
+        XCTAssertEqual(app.buttons["Sync Now"].exists, label != "Status, Off", "Sync Now visibility doesn't match \(label)")
+        attachScreenshot("settings sync")
+    }
+
     /// Settings: a SponsorBlock category's page changes its behavior, Restore Defaults resets it,
     /// and returning from the tab bar goes back to the first Settings page.
     func testSettingsChangeAndRestoreSkipBehavior() {

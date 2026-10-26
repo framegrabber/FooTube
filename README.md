@@ -2,7 +2,7 @@
 
 A native, ad-free YouTube client for Apple TV that you build and install yourself.
 
-FooTube resolves YouTube streams on the Apple TV itself and plays them in Apple's own video player. There is no web player, so there are no ads, and there's no server, no Google account and no tracking. Subscriptions, history and Watch Later live only on your Apple TV.
+FooTube resolves YouTube streams on the Apple TV itself and plays them in Apple's own video player. There is no web player, so there are no ads, and there's no Google account and no tracking. Subscriptions, history and Watch Later live on your Apple TV; if you like, they sync between your Apple TVs through a small server you run yourself ([Sync](#sync-optional)).
 
 It was built for the **Apple TV HD (4th generation, A8)**, which can only decode H.264 up to 1080p. Streams are capped to that, so it runs on every Apple TV with tvOS 18 or later.
 
@@ -24,7 +24,8 @@ It was built for the **Apple TV HD (4th generation, A8)**, which can only decode
 - **Scrubbing thumbnails**: pictures above the timeline while scrubbing or fast-forwarding (videos; not live streams).
 - **Up next**: when a video ends, a related video (preferably from the same channel) plays after a 10-second countdown.
 - **Resume** where you left off, plus **History** and **Watch Later** tabs (long-press a video for the menu).
-- **Settings**: SponsorBlock behavior per category, clearing History and Watch Later, version, when a sideloaded install expires, and credits.
+- **Sync (optional)**: subscriptions, Watch Later, History with resume positions and SponsorBlock settings stay the same on every Apple TV of the household, through your own server on Cloudflare's free plan.
+- **Settings**: SponsorBlock behavior per category, sync status, clearing History and Watch Later, version, when a sideloaded install expires, and credits.
 - Interface in English and German; titles and dates in your Apple TV's language.
 - Follows Apple's tvOS design: native lockups with lift and tilt, light and dark mode.
 
@@ -93,6 +94,22 @@ The script uses the "Apple TV" simulator. The Simulator decodes video with your 
 
 Debug launch arguments (Simulator or `run-device.sh`): `-play <video ID or URL>`, `-search <query>`, `-channel <channel ID>`, `-subscribe <channel ID,channel ID>`.
 
+## Sync (optional)
+
+Subscriptions, Watch Later, History (with resume positions) and SponsorBlock settings can be the same on every Apple TV of your household. They go only to a small server you deploy yourself on Cloudflare's free plan, from the FooTubeSyncBackend repository: its README covers deploying it and creating the token. Without it, FooTube sends nothing anywhere new.
+
+Connect each Apple TV once:
+
+```sh
+FOOTUBE_SYNC_URL=https://footube-sync.<subdomain>.workers.dev FOOTUBE_SYNC_TOKEN=<token> scripts/run-device.sh
+```
+
+Or put both variables in `~/.config/footube/sync.env` (shell syntax; another file via `FOOTUBE_SYNC_ENV`), which `run-device.sh` and `run-sim.sh` read on every run. The app keeps the URL and stores the token in its Keychain; the token never goes into the repository, the app bundle or the build settings. Later runs without the variables keep the configuration; `scripts/run-device.sh -syncReset YES` turns sync off (local data stays).
+
+FooTube syncs when it opens, every 5 minutes while it's open, a few seconds after a change, when the player closes and when it goes to the background. **Settings → Sync** shows the state ("Synced 2 minutes ago", "Offline, will retry", "Token rejected") and offers **Sync Now**; a missing network never blocks browsing or playback. A removal (unsubscribe, Watch Later) isn't undone by another Apple TV, even one that was off for months.
+
+For development against a local Worker: `npm run dev` in FooTubeSyncBackend, then `FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<token from its .dev.vars> scripts/run-sim.sh`.
+
 ## Using it
 
 - **Tabs:** Subscriptions, Search, Watch Later, History, Settings.
@@ -108,12 +125,13 @@ flowchart LR
     Core -->|search, channels, chapters,<br/>related, suggestions| ITK[InnerTubeKit<br/>vendored b5i/YouTubeKit]
     Core -->|stream URLs| YTK[YouTubeKit<br/>alexeichhorn]
     Core -->|skip segments| SB[SponsorBlock API]
+    Core -.->|optional sync| SW[your sync Worker]
     Core -->|filtered HLS| AVP[AVPlayer]
 ```
 
 - **Streams:** [YouTubeKit](https://github.com/alexeichhorn/YouTubeKit) gets the HLS master playlist. FooTube rewrites it to keep only H.264 ≤ 1080p video and the original audio track, then hands it to `AVPlayer`.
 - **Catalog:** search, channel uploads, chapters, related videos and suggestions use YouTube's internal InnerTube API through a vendored, renamed copy of [b5i/YouTubeKit](https://github.com/b5i/YouTubeKit) (`Packages/InnerTubeKit`; changes are listed in its `VENDORED.md`).
-- **State:** subscriptions, feed cache, history and Watch Later are stored in `UserDefaults` on the device; tvOS may delete files, but not these.
+- **State:** subscriptions, feed cache, history, Watch Later and settings are stored in `UserDefaults` on the device; tvOS may delete files, but not these. With sync on, subscriptions, Watch Later, history and SponsorBlock settings are also merged with your sync Worker's copy (one JSON document each; removals are kept as markers for 90 days so other Apple TVs don't bring them back).
 
 Background on why it's built this way: [docs/research.md](docs/research.md).
 

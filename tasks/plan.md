@@ -135,7 +135,7 @@ S1 Documents + merge rules ── S2 v2 stores + v1 migration ── S3 SyncClie
 - [x] S3: `SyncClient` for the Contract; fixtures recorded from `wrangler dev`; opt-in network test
 - [x] S4: `SyncEngine` rounds, 412 retry, `lastSyncAt`, format guard; two-device engine tests
 - [x] S5: Configuration (launch arguments, Keychain, scripts) and `SyncModel` triggers in the app
-- [ ] S6: Settings Sync section, status texts, wording about where data lives, SPEC/PRODUCT boundary changes
+- [x] S6: Settings Sync section, status texts, wording about where data lives, SPEC/PRODUCT boundary changes
 - [ ] S7: Two Simulators against `wrangler dev`, then against the deployed Worker; README/AGENTS; results
 
 ### Checkpoint: Sync

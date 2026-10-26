@@ -38,6 +38,9 @@ final class SyncModel {
         engine != nil
     }
 
+    /// The Worker's host while sync is on, for Settings.
+    private(set) var serverHost: String?
+
     @ObservationIgnored private var engine: SyncEngine?
     @ObservationIgnored private var reloads: [SyncStoreName: @MainActor () -> Void] = [:]
     @ObservationIgnored private var debounces: [SyncStoreName: Task<Void, Never>] = [:]
@@ -75,6 +78,7 @@ final class SyncModel {
             logger.info("Sync off")
             return
         }
+        serverHost = saved.url.host()
         engine = SyncEngine(
             transport: SyncClient(baseURL: saved.url, token: saved.token),
             subscriptions: SubscriptionStore(),

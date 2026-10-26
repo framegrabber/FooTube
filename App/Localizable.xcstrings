@@ -121,6 +121,16 @@
         }
       }
     },
+    "Another Apple TV saved data in a newer format. Install the current FooTube here; until then that data doesn't sync.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein anderes Apple TV hat Daten in einem neueren Format gespeichert. Installiere hier das aktuelle FooTube; bis dahin werden diese Daten nicht synchronisiert."
+          }
+        }
+      }
+    },
     "By default, sponsor segments are skipped automatically and every other category shows a Skip button.": {
       "localizations": {
         "de": {
@@ -461,6 +471,16 @@
         }
       }
     },
+    "Offline, will retry": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline, neuer Versuch folgt"
+          }
+        }
+      }
+    },
     "Open %@": {
       "localizations": {
         "de": {
@@ -531,12 +551,12 @@
         }
       }
     },
-    "Plays YouTube without ads: streams are found on this Apple TV and play in Apple's player. Subscriptions, history and Watch Later stay on this Apple TV. Not affiliated with YouTube or Google; using YouTube this way is against its Terms of Service.": {
+    "Plays YouTube without ads: streams are found on this Apple TV and play in Apple's player. Not affiliated with YouTube or Google; using YouTube this way is against its Terms of Service.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spielt YouTube ohne Werbung: Die Streams werden auf diesem Apple TV gefunden und laufen in Apples Player. Abos, Verlauf und „Später ansehen“ bleiben auf diesem Apple TV. Nicht mit YouTube oder Google verbunden; YouTube so zu nutzen verstößt gegen dessen Nutzungsbedingungen."
+            "value": "Spielt YouTube ohne Werbung: Die Streams werden auf diesem Apple TV gefunden und laufen in Apples Player. Nicht mit YouTube oder Google verbunden; YouTube so zu nutzen verstößt gegen dessen Nutzungsbedingungen."
           }
         }
       }
@@ -721,6 +741,16 @@
         }
       }
     },
+    "Status": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        }
+      }
+    },
     "Subscribe": {
       "localizations": {
         "de": {
@@ -741,12 +771,162 @@
         }
       }
     },
+    "Subscriptions, History, Watch Later and settings are kept on this Apple TV and on your household's own sync server. No account, no other server.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abos, Verlauf, „Später ansehen“ und Einstellungen liegen auf diesem Apple TV und auf dem eigenen Sync-Server deines Haushalts. Kein Konto, kein anderer Server."
+          }
+        }
+      }
+    },
+    "Subscriptions, History, Watch Later and settings stay on this Apple TV. No account, no server.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abos, Verlauf, „Später ansehen“ und Einstellungen bleiben auf diesem Apple TV. Kein Konto, kein Server."
+          }
+        }
+      }
+    },
+    "Subscriptions, Watch Later, History and SponsorBlock settings sync with your household's own server, %@. Nothing goes anywhere else.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abos, „Später ansehen“, Verlauf und SponsorBlock-Einstellungen werden mit dem eigenen Server deines Haushalts synchronisiert, %@. Sonst geht nichts irgendwohin."
+          }
+        }
+      }
+    },
+    "Sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung"
+          }
+        }
+      }
+    },
+    "Sync Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt synchronisieren"
+          }
+        }
+      }
+    },
+    "Sync failed, will retry": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehlgeschlagen, neuer Versuch folgt"
+          }
+        }
+      }
+    },
+    "Sync is off: subscriptions, Watch Later, History and SponsorBlock settings stay on this Apple TV. To share them between the household's Apple TVs, run your own sync server and pass its URL and token to scripts/run-device.sh (see the README).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung ist aus: Abos, „Später ansehen“, Verlauf und SponsorBlock-Einstellungen bleiben auf diesem Apple TV. Um sie zwischen den Apple TVs des Haushalts zu teilen, betreibe deinen eigenen Sync-Server und übergib seine URL und sein Token an scripts/run-device.sh (siehe README)."
+          }
+        }
+      }
+    },
+    "Sync is on: History is cleared on every Apple TV of the household.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung ist an: Der Verlauf wird auf jedem Apple TV des Haushalts gelöscht."
+          }
+        }
+      }
+    },
+    "Sync is on: Watch Later is cleared on every Apple TV of the household.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung ist an: „Später ansehen“ wird auf jedem Apple TV des Haushalts geleert."
+          }
+        }
+      }
+    },
+    "Synced %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiert %@"
+          }
+        }
+      }
+    },
+    "Syncing…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiere …"
+          }
+        }
+      }
+    },
+    "Syncs right away. FooTube also syncs when it opens, every 5 minutes while it's open, and a few seconds after each change.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiert sofort. FooTube synchronisiert außerdem beim Öffnen, alle 5 Minuten, solange es offen ist, und wenige Sekunden nach jeder Änderung."
+          }
+        }
+      }
+    },
     "Tangents and jokes that are not needed to understand the main content.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Abschweifungen und Witze, die man für den eigentlichen Inhalt nicht braucht."
+          }
+        }
+      }
+    },
+    "The sync server answered with an error. FooTube tries again at the next sync; the server's log (wrangler tail) has the details.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Sync-Server hat mit einem Fehler geantwortet. FooTube versucht es bei der nächsten Synchronisierung erneut; Details stehen im Log des Servers (wrangler tail)."
+          }
+        }
+      }
+    },
+    "The sync server can't be reached. Changes stay on this Apple TV and sync once it's back.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Sync-Server ist nicht erreichbar. Änderungen bleiben auf diesem Apple TV und werden synchronisiert, sobald er wieder da ist."
+          }
+        }
+      }
+    },
+    "The sync server rejected this Apple TV's token. Run scripts/run-device.sh again with the server's current token.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Sync-Server hat das Token dieses Apple TV abgelehnt. Führe scripts/run-device.sh erneut mit dem aktuellen Token des Servers aus."
           }
         }
       }
@@ -781,6 +961,16 @@
         }
       }
     },
+    "Token rejected": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token abgelehnt"
+          }
+        }
+      }
+    },
     "Unpaid self-promotion: merchandise, donations, or who the creator worked with.": {
       "localizations": {
         "de": {
@@ -807,6 +997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Als Nächstes"
+          }
+        }
+      }
+    },
+    "Update FooTube on this device": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FooTube auf diesem Gerät aktualisieren"
           }
         }
       }

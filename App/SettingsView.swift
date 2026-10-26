@@ -22,6 +22,8 @@ private struct SettingsPage: View {
     enum Row: Hashable {
         case category(SponsorCategory)
         case restoreDefaults
+        case syncState
+        case syncNow
         case clearHistory
         case clearWatchLater
         case version
@@ -39,6 +41,7 @@ private struct SettingsPage: View {
     @Environment(SettingsModel.self) private var settings
     @Environment(WatchHistoryModel.self) private var watchHistory
     @Environment(WatchLaterModel.self) private var watchLater
+    @Environment(SyncModel.self) private var sync
     @FocusState private var focus: Row?
     /// The description keeps the last row while focus is in the tab bar.
     @State private var described: Row = .category(.sponsor)
@@ -56,6 +59,14 @@ private struct SettingsPage: View {
                 Button("Restore Defaults") { settings.restoreDefaults() }
                     .disabled(settings.skip.isDefault)
                     .focused($focus, equals: .restoreDefaults)
+            }
+            Section("Sync") {
+                Button {} label: { LabeledContent("Status") { SyncStateText(state: sync.state) } }
+                    .focused($focus, equals: .syncState)
+                if sync.isConfigured {
+                    Button("Sync Now") { sync.syncNow() }
+                        .focused($focus, equals: .syncNow)
+                }
             }
             Section("History") {
                 Button { confirmation = .history } label: {
@@ -118,12 +129,34 @@ private struct SettingsPage: View {
             SettingsDescription(text: category.localizedDescription)
         case .restoreDefaults:
             SettingsDescription(text: String(localized: "By default, sponsor segments are skipped automatically and every other category shows a Skip button."))
+        case .syncState:
+            if let host = sync.serverHost {
+                SettingsDescription(
+                    text: String(localized: "Subscriptions, Watch Later, History and SponsorBlock settings sync with your household's own server, \(host). Nothing goes anywhere else."),
+                    detail: sync.state.explanation,
+                )
+            } else {
+                SettingsDescription(text: String(localized: "Sync is off: subscriptions, Watch Later, History and SponsorBlock settings stay on this Apple TV. To share them between the household's Apple TVs, run your own sync server and pass its URL and token to scripts/run-device.sh (see the README)."))
+            }
+        case .syncNow:
+            SettingsDescription(text: String(localized: "Syncs right away. FooTube also syncs when it opens, every 5 minutes while it's open, and a few seconds after each change."))
         case .clearHistory:
-            SettingsDescription(text: String(localized: "Clearing removes every video from History, with its resume position and watched mark. Subscriptions and Watch Later stay."))
+            SettingsDescription(
+                text: String(localized: "Clearing removes every video from History, with its resume position and watched mark. Subscriptions and Watch Later stay."),
+                detail: sync.isConfigured ? String(localized: "Sync is on: History is cleared on every Apple TV of the household.") : nil,
+            )
         case .clearWatchLater:
-            SettingsDescription(text: String(localized: "Clearing removes every saved video from Watch Later. History and subscriptions stay."))
+            SettingsDescription(
+                text: String(localized: "Clearing removes every saved video from Watch Later. History and subscriptions stay."),
+                detail: sync.isConfigured ? String(localized: "Sync is on: Watch Later is cleared on every Apple TV of the household.") : nil,
+            )
         case .version:
-            SettingsDescription(text: String(localized: "Plays YouTube without ads: streams are found on this Apple TV and play in Apple's player. Subscriptions, history and Watch Later stay on this Apple TV. Not affiliated with YouTube or Google; using YouTube this way is against its Terms of Service."))
+            SettingsDescription(
+                text: String(localized: "Plays YouTube without ads: streams are found on this Apple TV and play in Apple's player. Not affiliated with YouTube or Google; using YouTube this way is against its Terms of Service."),
+                detail: sync.isConfigured
+                    ? String(localized: "Subscriptions, History, Watch Later and settings are kept on this Apple TV and on your household's own sync server. No account, no other server.")
+                    : String(localized: "Subscriptions, History, Watch Later and settings stay on this Apple TV. No account, no server."),
+            )
         case .expiry:
             SettingsDescription(text: Self.expiry.map { String(localized: "This install stops launching on \($0.formatted(date: .long, time: .shortened)). Run scripts/run-device.sh again to renew it; subscriptions, history and Watch Later stay.") } ?? "")
         case let .credit(credit):
@@ -181,6 +214,40 @@ private struct SkipBehaviorPage: View {
             if let behavior {
                 described = behavior
             }
+        }
+    }
+}
+
+/// The Sync status row's value.
+private struct SyncStateText: View {
+    let state: SyncModel.State
+
+    var body: some View {
+        switch state {
+        case .off: Text("Off")
+        case .syncing: Text("Syncing…")
+        case let .synced(date):
+            // Refreshes the relative time while Settings stays open.
+            TimelineView(.periodic(from: .now, by: 30)) { _ in
+                Text("Synced \(date, format: .relative(presentation: .named))")
+            }
+        case .offline: Text("Offline, will retry")
+        case .failed: Text("Sync failed, will retry")
+        case .tokenRejected: Text("Token rejected")
+        case .updateRequired: Text("Update FooTube on this device")
+        }
+    }
+}
+
+private extension SyncModel.State {
+    /// Second paragraph of the Status description: what to do about a problem.
+    var explanation: String? {
+        switch self {
+        case .off, .syncing, .synced: nil
+        case .offline: String(localized: "The sync server can't be reached. Changes stay on this Apple TV and sync once it's back.")
+        case .failed: String(localized: "The sync server answered with an error. FooTube tries again at the next sync; the server's log (wrangler tail) has the details.")
+        case .tokenRejected: String(localized: "The sync server rejected this Apple TV's token. Run scripts/run-device.sh again with the server's current token.")
+        case .updateRequired: String(localized: "Another Apple TV saved data in a newer format. Install the current FooTube here; until then that data doesn't sync.")
         }
     }
 }

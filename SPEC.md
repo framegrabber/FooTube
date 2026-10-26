@@ -29,6 +29,7 @@ Source: [Apple TV HD technical specifications](https://support.apple.com/en-us/1
 - Local Swift package `FooTubeCore` for all non-UI logic; Swift Testing for tests
 - [alexeichhorn/YouTubeKit](https://github.com/alexeichhorn/YouTubeKit) (MIT): stream extraction, local only (`methods: [.local]`)
 - Later phases: [b5i/YouTubeKit](https://github.com/b5i/YouTubeKit) vendored as `InnerTubeKit` (search/channels); [MPVKit](https://github.com/mpvkit/MPVKit) only if AVFoundation cannot combine separate audio and video streams; SponsorBlock REST API; `UserDefaults` for subscriptions (the persistent local store on tvOS)
+- Optional sync: the builder's own Cloudflare Worker + D1 (`FooTubeSyncBackend`), reached with `URLSession`; token in the Keychain (`SPEC-sync-client.md`)
 - Dev tools: xcbeautify, swiftformat, xcode-build-server (sourcekit-lsp), yt-dlp (reference extractor for cross-checking)
 
 ## Commands
@@ -100,8 +101,8 @@ Naming: types `UpperCamelCase`, no `Manager`/`Helper` suffixes; one primary type
 
 ## Boundaries
 - **Always:** keep logic in FooTubeCore and test it; run core tests and the Simulator build before calling a task done; select only formats the Apple TV HD can hardware-decode; log errors with source client and reason; update `AGENTS.md` when commands change.
-- **Ask first:** adding any dependency (incl. MPVKit); enabling a remote fallback; any network request to a host other than YouTube or SponsorBlock; changing the bundle ID or deployment target; any Google-account login or cookie use.
-- **Never:** commit secrets, cookies or tokens; hand-edit `FooTube.xcodeproj`; modify vendored `InnerTubeKit` without recording the change; skip or delete failing tests to get green; send watch data anywhere except the SponsorBlock hash-prefix lookup.
+- **Ask first:** adding any dependency (incl. MPVKit); enabling a remote fallback; any network request to a host other than YouTube, SponsorBlock or the configured sync Worker; changing the bundle ID or deployment target; any Google-account login or cookie use.
+- **Never:** commit secrets, cookies or tokens; hand-edit `FooTube.xcodeproj`; modify vendored `InnerTubeKit` without recording the change; skip or delete failing tests to get green; send watch data anywhere except the SponsorBlock hash-prefix lookup and the sync Worker the builder configured.
 
 ## Success Criteria
 1. **Playback MVP:** on the Apple TV HD, ≥4 of 5 non-restricted test videos play with audio, start in < 3 s, seek and pause with the Siri Remote, show no ads, and still play 24 h later.
@@ -114,10 +115,10 @@ Naming: types `UpperCamelCase`, no `Manager`/`Helper` suffixes; one primary type
 - No remote extraction fallback initially; self-hosted YouTubeKit-Server may be added later (ask first).
 - SponsorBlock: by default auto-skip `sponsor`; all other categories show a skip button. Each category can be changed in Settings (skip automatically, show button, off).
 - Subscriptions start empty; added only via the channel page. No Takeout import.
+- Sync between the household's Apple TVs goes through a self-hosted Cloudflare Worker, not iCloud (needs the paid program): [SYNC.md](SYNC.md), [SPEC-sync-client.md](SPEC-sync-client.md).
 - Device runs tvOS 26 (owner reports "25 or 26"; Apple went from 18 to 26, so ≥ 18 either way). Deployment target tvOS 18 stands.
 
 ## Out of Scope (possible later)
-- **Subscription sync/backup.** iCloud/CloudKit sync needs the iCloud entitlement, which a free Personal Team cannot sign; it would require the paid Apple Developer Program. Alternatives without it: export/import a JSON file, or sync via a self-hosted server alongside a future YouTubeKit-Server.
 - Google Takeout `subscriptions.csv` import.
 - Remote extraction fallback (self-hosted YouTubeKit-Server).
 
