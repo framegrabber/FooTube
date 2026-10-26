@@ -2,8 +2,11 @@
 # Build FooTube for the paired Apple TV, install it and launch it.
 #   scripts/run-device.sh [launch args...]      e.g. scripts/run-device.sh -play aqz-KE-bpKQ
 # Device: first paired Apple TV reported by devicectl, or set FOOTUBE_DEVICE=<name or identifier>.
+# Sync: with FOOTUBE_SYNC_URL and FOOTUBE_SYNC_TOKEN set (or in $FOOTUBE_SYNC_ENV, default
+# ~/.config/footube/sync.env) the launch adds -syncURL/-syncToken; the app keeps them (scripts/sync-env.sh).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+source scripts/sync-env.sh
 
 devices="$(mktemp)"
 trap 'rm -f "$devices"' EXIT
@@ -30,4 +33,4 @@ products="$(setting BUILT_PRODUCTS_DIR)"
 xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$DEST" -allowProvisioningUpdates build | xcbeautify --quiet
 
 xcrun devicectl device install app --device "$DEVICE" "$products/FooTube.app" >/dev/null
-xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE" "$@"
+xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE" "$@" ${sync_args[@]+"${sync_args[@]}"}
