@@ -374,6 +374,32 @@ Direction, assumptions and research: `docs/ideas/scrubbing-thumbnails.md`. Verif
 
 ---
 
+## Phase 10: Sync client (2026-10-26)
+
+Spec: `SPEC-sync-client.md`. Verification for every task: `scripts/check.sh task` plus the task's checks. One commit per task (`S<n>: …`).
+
+| ID | Task | Acceptance |
+|---|---|---|
+| S1 | `SyncDocuments.swift` (four document types, `format` check, canonical encoding) and `SyncMerge.swift` (rules in the spec) | Offline tests for every rule: later `changedAt` wins, removal wins ties, canonical tie-break, pruned-elsewhere rule with/without `lastSyncAt`, 90-day pruning boundary, future timestamps, history `watched` OR, summary fallback, `clearedAt`, 500 cap, settings LWW and "never changed" loses; merge deterministic on swapped inputs |
+| S2 | `SubscriptionStore`, `WatchLaterStore`, `WatchHistory`, `SkipSettingsStore` keep their public API on top of v2 documents (removals become markers, hidden from readers), expose `document()`/`replace(_:)` for sync, migrate v1 keys once and remove them | Migration tests from v1 fixtures of all four stores (order, positions, watched, summaries, settings); existing store tests pass unchanged; app builds without changes to views |
+| S3 | `SyncClient`: `fetch(store)` → `(Data, ETag)?`, `put(store, data, precondition)` → `.stored(ETag)` / `.conflict(Data?, ETag?)`; typed `SyncError`; 10 s timeout; no logging of token or bodies | URLProtocol-stub tests for every Contract status; fixtures recorded from `wrangler dev` (`Fixtures/sync/`); opt-in `SyncNetworkTests` against `wrangler dev` (`FOOTUBE_SYNC_URL`/`FOOTUBE_SYNC_TOKEN`) |
+| S4 | `SyncEngine` (main actor): one round per store as specified, at most 3 attempts on `412`, `lastSyncAt` in `sync.state.v1`, unsupported `format` stops that store, status per store | Engine tests with two devices (separate `UserDefaults` suites) against an in-memory fake Worker implementing the Contract: subscribe/unsubscribe/re-subscribe, concurrent edits, forced 412, device offline 100 days, newer format, 401, offline |
+| S5 | `SyncConfiguration` (launch args `-syncURL`/`-syncToken`/`-syncReset`, URL in `UserDefaults`, token in Keychain, https or localhost only); `App/SyncModel.swift` (scene phase, 5-min timer, debounced per-store changes, player close, background task) wired in `FooTubeApp`; models notify it and reload after merges; `run-sim.sh`/`run-device.sh` pass `FOOTUBE_SYNC_URL`/`FOOTUBE_SYNC_TOKEN` or `$FOOTUBE_SYNC_ENV` | Simulator with `wrangler dev`: subscribing shows a `PUT` in the Worker log within 3 s; relaunch without args keeps the configuration; `-syncReset YES` turns it off; token absent from logs (`log stream` check) |
+| S6 | Settings section Sync (state row, Sync Now), descriptions; wording changes in Settings texts; `SPEC.md` and `PRODUCT.md` boundary/purpose changes from the spec; strings EN + DE | Screenshots of each state (off, synced, offline, token rejected); German strings present (`.stringsdata` keys); UI tests still pass |
+| S7 | Two Simulators (`Apple TV`, `Apple TV 4K (3rd generation)`) against `wrangler dev`, then against the deployed Worker (test rows deleted afterwards); README sync section; `AGENTS.md` commands; results | Spec success criteria 1–5 shown with screenshots/logs in `tasks/results.md`; device check left to the owner |
+
+## Phase 11: Browser inbox (after Phase 10)
+
+Spec: `SPEC-browser-inbox.md`.
+
+| ID | Task | Acceptance |
+|---|---|---|
+| I1 | Worker: `INBOX_TOKEN`, migration `0002_inbox.sql`, `POST`/`GET`/`DELETE /v1/inbox` (FooTubeSyncBackend) | Every Contract row tested, token separation, cap 100, duplicates |
+| I2 | Worker: `/add` page with hash-based CSP; `npm run bookmarklet` with tested ID extraction; README | Header tests incl. CSP hash; Safari/Chrome manual check on youtube.com (no CSP violations, fragment removed) |
+| I3 | Client: inbox folding in the Watch Later round; `SyncClient` inbox calls | Fake-Worker tests (new, already live, re-add after removal, two devices, failed DELETE); Simulator shows a bookmarked video first in Watch Later |
+
+---
+
 ## Checkpoint: Complete
 - [ ] SPEC success criteria 1–5 on the Apple TV HD
 - [ ] code-review-and-quality, code-simplification; human sign-off

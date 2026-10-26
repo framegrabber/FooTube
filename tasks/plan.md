@@ -124,6 +124,28 @@ Direction and assumptions: `docs/ideas/scrubbing-thumbnails.md`. AVKit draws scr
 - [x] H3: Resolver builds the playlists, loader serves them from memory with request logging; Simulator evidence, start-time comparison, opt-in network test
 - [ ] Owner on the Apple TV HD: thumbnails while scrubbing, start time acceptable, scrubbing smooth
 
+### Phase 10: Sync client (2026-10-26, overnight) — details in `tasks/todo.md` S1–S7
+Spec: `SPEC-sync-client.md` (module `sync-client` in `SYNC.md`), Contract in `FooTubeSyncBackend/SPEC.md`. Written and started overnight on the owner's request without spec review; review points are listed in the spec's "Decisions to review". Order is risk-first: merge rules and migration (data loss risk) before networking, networking before UI.
+```
+S1 Documents + merge rules ── S2 v2 stores + v1 migration ── S3 SyncClient (Contract) ── S4 SyncEngine
+                                                                                         └─ S5 Config + app triggers ── S6 Settings + wording ── S7 Two-Simulator + device verification, docs
+```
+- [ ] S1: Sync documents and merge rules (pure, offline tests)
+- [ ] S2: Stores on v2 documents with v1 migration
+- [ ] S3: `SyncClient` for the Contract; fixtures recorded from `wrangler dev`; opt-in network test
+- [ ] S4: `SyncEngine` rounds, 412 retry, `lastSyncAt`, format guard; two-device engine tests
+- [ ] S5: Configuration (launch arguments, Keychain, scripts) and `SyncModel` triggers in the app
+- [ ] S6: Settings Sync section, status texts, wording about where data lives, SPEC/PRODUCT boundary changes
+- [ ] S7: Two Simulators against `wrangler dev`, then against the deployed Worker; README/AGENTS; results
+
+### Checkpoint: Sync
+- [ ] `SPEC-sync-client.md` success criteria 1–6 (1–5 in the Simulator; device by owner)
+- [ ] code-review-and-quality and security-and-hardening on the sync code; human sign-off
+
+### Later modules
+- `browser-inbox`: `SPEC-browser-inbox.md`; tasks I1–I3 in `tasks/todo.md`.
+- `ios-app`: `SPEC-ios-app.md`; blocked on its open questions (owner).
+
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |---|---|---|
