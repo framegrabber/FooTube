@@ -9,6 +9,6 @@ Index of the sync initiative. Background and decisions: `docs/ideas/cloudflare-s
 | `ios-app` | iPhone/iPad target on FooTubeCore, synced through `sync-client` | FooTube | `SPEC-ios-app.md` (open questions block implementation) | `sync-client` |
 | `browser-inbox` | Add-only inbox token, `/add` page, `/v1/inbox`, bookmarklet; apps fold inbox entries into Watch Later | both | `SPEC-browser-inbox.md` | `sync-backend`, `sync-client` |
 
-Build order: `sync-backend` → `sync-client` → `ios-app` → `browser-inbox`. Changed overnight 2026-10-26 (owner to confirm): `browser-inbox` goes before `ios-app`, because the two don't depend on each other and `ios-app` waits on open questions in its spec.
+Build order: `sync-backend` → `sync-client` → `browser-inbox` → `ios-app`. Changed overnight 2026-10-26 from the approved `… → ios-app → browser-inbox` (owner to confirm): the two don't depend on each other, and `ios-app` waits on open questions in its spec.
 
 The contract lives only in `FooTubeSyncBackend/SPEC.md` (section "Contract"). FooTube links to it; FooTubeCore pins it with responses recorded from `wrangler dev`.
