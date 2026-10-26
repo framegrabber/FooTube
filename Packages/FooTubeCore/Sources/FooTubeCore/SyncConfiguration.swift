@@ -40,8 +40,8 @@ extension SyncConfiguration: CustomStringConvertible, CustomDebugStringConvertib
 
 /// Why a sync configuration was rejected or couldn't be stored. Never carries the token.
 public enum SyncConfigurationError: Error, Hashable, Sendable {
-    /// Only one of `-syncURL` and `-syncToken` was given.
-    case incompleteArguments
+    /// The configuration file isn't JSON with the strings `url` and `token`.
+    case unreadableFile
     /// Not `https` (or `http` to localhost); carries only `scheme://host`.
     case invalidURL(String)
     case tokenTooShort(length: Int)
@@ -52,7 +52,7 @@ public enum SyncConfigurationError: Error, Hashable, Sendable {
 
     public var message: String {
         switch self {
-        case .incompleteArguments: "Sync needs both -syncURL and -syncToken"
+        case .unreadableFile: "Sync configuration file unreadable: expected JSON with \"url\" and \"token\""
         case let .invalidURL(url): "Sync URL must be https (http only to localhost or 127.0.0.1), got \(url)"
         case let .tokenTooShort(length):
             "Sync token has \(length) characters, the Worker needs at least \(SyncConfiguration.minimumTokenLength)"

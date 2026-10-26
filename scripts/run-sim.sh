@@ -2,7 +2,8 @@
 # Build FooTube, install it on the "Apple TV" Simulator and launch it.
 #   scripts/run-sim.sh [extra launch args...]
 # Sync: with FOOTUBE_SYNC_URL and FOOTUBE_SYNC_TOKEN set (or in $FOOTUBE_SYNC_ENV, default
-# ~/.config/footube/sync.env) the launch adds -syncURL/-syncToken; the app keeps them (scripts/sync-env.sh).
+# ~/.config/footube/sync.env) a configuration file goes into the app's container before launch; the
+# app keeps URL and token and deletes the file (scripts/sync-env.sh). `-syncReset YES` turns sync off.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 source scripts/sync-env.sh
@@ -24,4 +25,9 @@ xcrun simctl bootstatus "$SIM" >/dev/null
 [[ -n "${FOOTUBE_HEADLESS:-}" ]] || open -a Simulator
 xcrun simctl install "$SIM" "$products/FooTube.app"
 xcrun simctl terminate "$SIM" "$BUNDLE" 2>/dev/null || true
-xcrun simctl launch "$SIM" "$BUNDLE" "$@" ${sync_args[@]+"${sync_args[@]}"}
+if [[ -n "$sync_file" ]]; then
+  container="$(xcrun simctl get_app_container "$SIM" "$BUNDLE" data)"
+  mkdir -p "$(dirname "$container/$sync_destination")"
+  cp "$sync_file" "$container/$sync_destination"
+fi
+xcrun simctl launch "$SIM" "$BUNDLE" "$@"

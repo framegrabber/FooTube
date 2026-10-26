@@ -84,7 +84,7 @@ final class FocusNavigationUITests: XCTestCase {
     }
 
     /// Settings: the Sync section shows a known state (whatever this Simulator is configured for: Off
-    /// without `-syncURL`/`-syncToken`) and Sync Now only while sync is configured.
+    /// without a sync configuration) and Sync Now only while sync is configured.
     func testSettingsShowsSyncStatus() {
         let app = launch([])
         press(.up, times: 2) // tab bar

@@ -2,20 +2,19 @@ import Foundation
 import os
 
 /// Loads and saves the sync configuration: the Worker URL in `UserDefaults` (`sync.url.v1`), the
-/// token in the Keychain. Configured by launch arguments (`scripts/run-sim.sh`/`run-device.sh` add
-/// them from `FOOTUBE_SYNC_URL`/`FOOTUBE_SYNC_TOKEN`), so the token never enters the repository,
-/// the bundle or the build settings:
-/// - `-syncURL <url> -syncToken <token>`: both together; saved when valid, the old configuration is
-///   kept otherwise.
-/// - `-syncReset YES`: removes URL, token and the engine's sync state; local data stays.
-///
-/// Arguments are read from UserDefaults' argument domain only, and the URL is persisted under a
-/// different key, so a later launch without arguments uses the saved configuration.
+/// token in the Keychain. Configured by a file the run scripts copy into the app's data container
+/// before launch (`scripts/sync-env.sh`, from `FOOTUBE_SYNC_URL`/`FOOTUBE_SYNC_TOKEN`), so the token
+/// never enters the repository, the bundle, the build settings or a launch command (the system logs
+/// launch arguments):
+/// - `Library/Caches/footube-sync.json`, `{"url": …, "token": …}`: read once at launch and deleted
+///   whether valid or not; saved when valid, the old configuration is kept otherwise.
+/// - Launch argument `-syncReset YES` (no secret): removes URL, token and the engine's sync state;
+///   local data stays.
 public struct SyncConfigurationStore {
     public enum LaunchChange: Hashable, Sendable {
-        /// No sync arguments.
+        /// No configuration file and no reset.
         case none
-        /// A configuration from the arguments was saved (after a reset, if both were given).
+        /// The configuration from the file was saved (after a reset, if both were given).
         case configured
         /// `-syncReset YES` removed the configuration.
         case reset
@@ -26,6 +25,12 @@ public struct SyncConfigurationStore {
     /// This launch's arguments (`-name value` pairs) as UserDefaults parsed them.
     public static var launchArguments: [String: Any] {
         UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+    }
+
+    /// Where the run scripts drop the configuration (`Library/Caches` exists and is writable on tvOS;
+    /// the file lives only until the launch it is meant for).
+    public static var configurationFile: URL {
+        URL.cachesDirectory.appending(path: "footube-sync.json")
     }
 
     private let defaults: UserDefaults
@@ -62,31 +67,44 @@ public struct SyncConfigurationStore {
         try tokens.remove()
     }
 
-    /// Applies `-syncReset`, `-syncURL` and `-syncToken`. Validates before changing anything: on an
-    /// error the previous configuration (and a requested reset) is left alone.
+    /// Applies the configuration file and `-syncReset`. The file is deleted before it is parsed, so it
+    /// never outlives this call. Validates before changing anything: on an error the previous
+    /// configuration (and a requested reset) is left alone.
     @discardableResult
-    public func applyLaunchArguments(_ arguments: [String: Any] = Self.launchArguments) throws(SyncConfigurationError) -> LaunchChange {
+    public func applyLaunchChanges(
+        arguments: [String: Any] = Self.launchArguments,
+        configurationFile: URL = Self.configurationFile,
+    ) throws(SyncConfigurationError) -> LaunchChange {
         let shouldReset = Self.isYes(arguments["syncReset"])
-        let url = arguments["syncURL"] as? String
-        let token = arguments["syncToken"] as? String
-        var configuration: SyncConfiguration?
-        switch (url, token) {
-        case (nil, nil):
-            break
-        case let (url?, token?):
-            guard let parsed = URL(string: url) else { throw .invalidURL("unparsable URL") }
-            configuration = try SyncConfiguration(url: parsed, token: token)
-        default:
-            throw .incompleteArguments
-        }
+        let configuration = try consume(configurationFile)
         if shouldReset {
             try reset()
             logger.info("Sync configuration reset by launch argument")
         }
         guard let configuration else { return shouldReset ? .reset : .none }
         try save(configuration)
-        logger.info("Sync configured by launch arguments for \(configuration.url.host() ?? "", privacy: .public)")
+        logger.info("Sync configured from file for \(configuration.url.host() ?? "", privacy: .public)")
         return .configured
+    }
+
+    /// Reads and deletes the configuration file; nil when there is none.
+    private func consume(_ file: URL) throws(SyncConfigurationError) -> SyncConfiguration? {
+        guard FileManager.default.fileExists(atPath: file.path) else { return nil }
+        let data = try? Data(contentsOf: file)
+        do {
+            try FileManager.default.removeItem(at: file)
+        } catch {
+            logger.error("Couldn't delete the sync configuration file: \(error.localizedDescription, privacy: .public)")
+        }
+        // No decoding detail: it could quote the file's content.
+        guard let data, let file = try? JSONDecoder().decode(ConfigurationFile.self, from: data) else { throw .unreadableFile }
+        guard let url = URL(string: file.url) else { throw .invalidURL("unparsable URL") }
+        return try SyncConfiguration(url: url, token: file.token)
+    }
+
+    private struct ConfigurationFile: Decodable {
+        let url: String
+        let token: String
     }
 
     private static func isYes(_ value: Any?) -> Bool {

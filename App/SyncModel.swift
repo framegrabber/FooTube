@@ -5,8 +5,8 @@ import os
 import SwiftUI
 import UIKit
 
-/// Syncs the local stores with the household's Worker when sync is configured (launch arguments
-/// `-syncURL`/`-syncToken`, see `SyncConfigurationStore`) and reports the state for Settings.
+/// Syncs the local stores with the household's Worker when sync is configured (a file the run
+/// scripts drop into the container, see `SyncConfigurationStore`) and reports the state for Settings.
 /// Without a configuration it does nothing and sends nothing (`state == .off`).
 ///
 /// When (SPEC-sync-client → Sync engine): all stores when the app becomes active and every 5 minutes
@@ -60,9 +60,9 @@ final class SyncModel {
         configuration: SyncConfigurationStore = SyncConfigurationStore(),
     ) {
         do {
-            try configuration.applyLaunchArguments()
+            try configuration.applyLaunchChanges()
         } catch {
-            logger.error("Sync launch arguments ignored: \(error.message, privacy: .public)")
+            logger.error("Sync configuration not applied: \(error.message, privacy: .public)")
         }
         reloads = [
             .subscriptions: { subscriptions.reload() },

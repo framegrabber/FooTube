@@ -46,8 +46,8 @@ Pure functions in FooTubeCore: `merge(local, remote, lastSyncAt, now) -> merged`
 - **Logging:** `os.Logger` category `sync`: store, status code, attempt, merged entry counts. Never the token, never titles or video IDs.
 
 ## Configuration
-- Launch arguments `-syncURL <https URL>` and `-syncToken <token>` (once; like `-play`): the app saves the URL in `UserDefaults` and the token in the Keychain (generic password, this app only), then forgets the arguments. `-syncReset YES` removes both and the sync state, keeping local data.
-- `scripts/run-sim.sh` and `scripts/run-device.sh` add these arguments when `FOOTUBE_SYNC_URL` and `FOOTUBE_SYNC_TOKEN` are set, or read them from the file `$FOOTUBE_SYNC_ENV` (default `~/.config/footube/sync.env`) when it exists. The token never enters the repository, the app bundle or the build settings.
+- A configuration file `Library/Caches/footube-sync.json` (`{"url": …, "token": …}`) in the app's data container: at launch the app reads it, deletes it whether valid or not (logging only the error message), and saves the URL in `UserDefaults` and the token in the Keychain (generic password, this app only). `-syncReset YES` (launch argument, no secret) removes both and the sync state, keeping local data.
+- `scripts/run-sim.sh` and `scripts/run-device.sh` write that file (mode 600, deleted when the script exits) when `FOOTUBE_SYNC_URL` and `FOOTUBE_SYNC_TOKEN` are set, or read them from the file `$FOOTUBE_SYNC_ENV` (default `~/.config/footube/sync.env`) when it exists, and copy it into the installed app's container before launch (`simctl get_app_container … data` / `devicectl device copy to --domain-type appDataContainer`). The token never enters the repository, the app bundle, the build settings or a launch command.
 - The URL must be `https`, except `http://localhost` / `http://127.0.0.1` (Simulator against `wrangler dev`).
 
 ## Settings
@@ -73,7 +73,7 @@ Packages/FooTubeCore/Sources/FooTubeCore/
   SyncMerge.swift          → merge rules
   SyncClient.swift         → Contract over URLSession (GET/PUT, ETag, typed SyncError)
   SyncEngine.swift         → rounds, retries, lastSyncAt, schedule-independent
-  SyncConfiguration.swift  → URL + token loading/saving (UserDefaults + Keychain), launch arguments
+  SyncConfiguration.swift  → URL + token loading/saving (UserDefaults + Keychain), configuration file, -syncReset
   SubscriptionStore.swift, WatchLater.swift, WatchHistory.swift, SkipSettings.swift → v2 documents + v1 migration, same public API plus document access
 Packages/FooTubeCore/Tests/FooTubeCoreTests/
   SyncMergeTests, SyncMigrationTests, SyncClientTests (URLProtocol stub, responses recorded from wrangler dev in Fixtures/sync/), SyncEngineTests, SyncNetworkTests (opt-in)
@@ -129,7 +129,7 @@ public func merge(_ local: SubscriptionsDocument, _ remote: SubscriptionsDocumen
 - `PRODUCT.md`: Product Purpose, Positioning, Capabilities (state lives in `UserDefaults`, optionally synced to the builder's own Cloudflare Worker), Principle 2 becomes "Nothing leaves the household: no account, no third-party server, no telemetry; the only server is the one the builder runs".
 
 ## Decisions to review
-- **Config by launch arguments + Keychain, not an xcconfig.** A token in a gitignored file inside the repo would be flagged by `gitleaks dir` (which scans ignored files too) and would need a CONSTRAINTS exception; base64 tokens can also contain `//`, which starts a comment in xcconfig. Launch arguments from the existing scripts keep the token out of the repo and the bundle and survive the weekly rebuild (Keychain and `UserDefaults` persist).
+- **Config by a file dropped into the app container + Keychain, not an xcconfig and not launch arguments.** A token in a gitignored file inside the repo would be flagged by `gitleaks dir` (which scans ignored files too) and would need a CONSTRAINTS exception; base64 tokens can also contain `//`, which starts a comment in xcconfig. The first implementation passed `-syncURL`/`-syncToken` as launch arguments, but the system logs launch arguments: the Simulator's unified log (CoreSimulatorBridge, launchd) showed the full token after one `simctl launch`, and `devicectl` launches are logged on the device the same way. The scripts now copy a temporary file into the app's data container (`Library/Caches`, which exists and is app-writable on tvOS), and the app deletes it at the next launch; Keychain and `UserDefaults` survive the weekly rebuild. Changed by the lead on 2026-10-26 after that finding.
 - **v1 keys removed after migration.** Installing an older build afterwards would start empty; accepted for a clean cutover.
 - **History pushes 30 s after the last change**, not on every 5 s record, plus on leaving the player and on backgrounding.
 - **Settings sync whole-document last-writer-wins**, not per category.

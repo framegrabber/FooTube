@@ -3,13 +3,14 @@
 #   scripts/run-device.sh [launch args...]      e.g. scripts/run-device.sh -play aqz-KE-bpKQ
 # Device: first paired Apple TV reported by devicectl, or set FOOTUBE_DEVICE=<name or identifier>.
 # Sync: with FOOTUBE_SYNC_URL and FOOTUBE_SYNC_TOKEN set (or in $FOOTUBE_SYNC_ENV, default
-# ~/.config/footube/sync.env) the launch adds -syncURL/-syncToken; the app keeps them (scripts/sync-env.sh).
+# ~/.config/footube/sync.env) a configuration file goes into the app's container before launch; the
+# app keeps URL and token and deletes the file (scripts/sync-env.sh). `-syncReset YES` turns sync off.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 source scripts/sync-env.sh
 
 devices="$(mktemp)"
-trap 'rm -f "$devices"' EXIT
+trap 'rm -f "$devices" "$sync_file"' EXIT
 xcrun devicectl list devices --json-output "$devices" >/dev/null 2>&1
 # "<identifier>\t<name>" of the chosen paired Apple TV.
 read -r DEVICE NAME < <(jq -r --arg want "${FOOTUBE_DEVICE:-}" '.result.devices[]
@@ -33,4 +34,8 @@ products="$(setting BUILT_PRODUCTS_DIR)"
 xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$DEST" -allowProvisioningUpdates build | xcbeautify --quiet
 
 xcrun devicectl device install app --device "$DEVICE" "$products/FooTube.app" >/dev/null
-xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE" "$@" ${sync_args[@]+"${sync_args[@]}"}
+if [[ -n "$sync_file" ]]; then
+  xcrun devicectl device copy to --device "$DEVICE" --domain-type appDataContainer --domain-identifier "$BUNDLE" \
+    --source "$sync_file" --destination "$sync_destination" --quiet
+fi
+xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE" "$@"

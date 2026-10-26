@@ -104,7 +104,7 @@ Connect each Apple TV once:
 FOOTUBE_SYNC_URL=https://footube-sync.<subdomain>.workers.dev FOOTUBE_SYNC_TOKEN=<token> scripts/run-device.sh
 ```
 
-Or put both variables in `~/.config/footube/sync.env` (shell syntax; another file via `FOOTUBE_SYNC_ENV`), which `run-device.sh` and `run-sim.sh` read on every run. The app keeps the URL and stores the token in its Keychain; the token never goes into the repository, the app bundle or the build settings. Later runs without the variables keep the configuration; `scripts/run-device.sh -syncReset YES` turns sync off (local data stays).
+Or put both variables in `~/.config/footube/sync.env` (shell syntax; another file via `FOOTUBE_SYNC_ENV`), which `run-device.sh` and `run-sim.sh` read on every run. The script copies them as a small file into the installed app's container; at launch the app keeps the URL, stores the token in its Keychain and deletes the file. The token never goes into the repository, the app bundle, the build settings or the launch command. Later runs without the variables keep the configuration; `scripts/run-device.sh -syncReset YES` turns sync off (local data stays).
 
 FooTube syncs when it opens, every 5 minutes while it's open, a few seconds after a change, when the player closes and when it goes to the background. **Settings → Sync** shows the state ("Synced 2 minutes ago", "Offline, will retry", "Token rejected") and offers **Sync Now**; a missing network never blocks browsing or playback. A removal (unsubscribe, Watch Later) isn't undone by another Apple TV, even one that was off for months.
 
