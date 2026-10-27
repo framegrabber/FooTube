@@ -119,6 +119,22 @@ struct SyncConfigurationTests {
         #expect(relaunched.load()?.token == token)
     }
 
+    @Test func `another Worker URL forgets lastSyncAt, a new token for the same URL keeps it`() throws {
+        try configure()
+        defaults.set(Data("{}".utf8), forKey: "sync.state.v1")
+        defaults.set(Data("{}".utf8), forKey: "subscriptions.v2")
+        let rotated = Data((0 ..< 48).map { _ in UInt8.random(in: 0 ... 255) }).base64EncodedString()
+        try drop(url: workerURL, token: rotated)
+        #expect(try apply() == .configured)
+        #expect(defaults.object(forKey: "sync.state.v1") != nil)
+        #expect(store.load()?.token == rotated)
+
+        try drop(url: "https://other.example.dev", token: rotated)
+        #expect(try apply() == .configured)
+        #expect(defaults.object(forKey: "sync.state.v1") == nil)
+        #expect(defaults.object(forKey: "subscriptions.v2") != nil)
+    }
+
     @Test func `a new file replaces the saved configuration`() throws {
         try configure()
         let other = Data((0 ..< 48).map { _ in UInt8.random(in: 0 ... 255) }).base64EncodedString()

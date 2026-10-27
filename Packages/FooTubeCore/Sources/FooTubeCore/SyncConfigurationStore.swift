@@ -54,9 +54,14 @@ public struct SyncConfigurationStore {
         }
     }
 
-    /// Token first: if the Keychain fails, nothing changed.
+    /// Token first: if the Keychain fails, nothing changed. Another Worker URL forgets every store's
+    /// `lastSyncAt`: those times describe the old Worker, and against a new one the pruned-elsewhere
+    /// rule would drop local entries the new Worker never saw. A new token for the same URL keeps them.
     public func save(_ configuration: SyncConfiguration) throws(SyncConfigurationError) {
         try tokens.save(configuration.token)
+        if defaults.string(forKey: Self.urlKey) != configuration.url.absoluteString {
+            SyncEngine.resetState(in: defaults)
+        }
         defaults.set(configuration.url.absoluteString, forKey: Self.urlKey)
     }
 
