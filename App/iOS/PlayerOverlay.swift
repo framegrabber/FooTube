@@ -5,7 +5,8 @@ import UIKit
 
 /// SwiftUI over the full-screen player. AVKit on iOS has no contextual actions (Skip button) and no
 /// chapter markers, so FooTube adds its own: the skip notice between video and controls, and a Skip
-/// button and a Chapters button above the transport bar.
+/// button and a Chapters button at the top trailing edge, below AVKit's top row of controls (its
+/// bottom edge holds the transport bar and the playback speed, More and subtitle buttons).
 enum PlayerOverlay {
     @MainActor
     static func install(in controller: AVPlayerViewController, session: PlayerSession) {
@@ -33,7 +34,7 @@ enum PlayerOverlay {
         let guide = controller.view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
             actions.view.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -16),
-            actions.view.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -88),
+            actions.view.topAnchor.constraint(equalTo: guide.topAnchor, constant: 64),
         ])
         actions.didMove(toParent: controller)
         chrome.observeTouches(in: controller.view)
