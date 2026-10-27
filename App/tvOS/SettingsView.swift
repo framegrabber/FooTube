@@ -83,9 +83,9 @@ private struct SettingsPage: View {
             Section("About") {
                 // Information rows are buttons without an action so they take focus and get a
                 // description, like the Info rows of the Apple TV's own Settings.
-                Button {} label: { LabeledContent("Version", value: Self.version) }
+                Button {} label: { LabeledContent("Version", value: AppInstall.version) }
                     .focused($focus, equals: .version)
-                if let expiry = Self.expiry {
+                if let expiry = AppInstall.expiry {
                     Button {} label: {
                         LabeledContent("Expires") { Text(expiry, format: .relative(presentation: .named)) }
                     }
@@ -158,23 +158,11 @@ private struct SettingsPage: View {
                     : String(localized: "Subscriptions, History, Watch Later and settings stay on this Apple TV. No account, no server."),
             )
         case .expiry:
-            SettingsDescription(text: Self.expiry.map { String(localized: "This install stops launching on \($0.formatted(date: .long, time: .shortened)). Run scripts/run-device.sh again to renew it; subscriptions, history and Watch Later stay.") } ?? "")
+            SettingsDescription(text: AppInstall.expiry.map { String(localized: "This install stops launching on \($0.formatted(date: .long, time: .shortened)). Run scripts/run-device.sh again to renew it; subscriptions, history and Watch Later stay.") } ?? "")
         case let .credit(credit):
             SettingsDescription(text: credit.text)
         }
     }
-
-    private static let version: String = {
-        let info = Bundle.main.infoDictionary
-        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = info?["CFBundleVersion"] as? String ?? "?"
-        return "\(short) (\(build))"
-    }()
-
-    /// When this install stops launching; nil in the Simulator, which embeds no profile.
-    private static let expiry: Date? = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision")
-        .flatMap { try? Data(contentsOf: $0) }
-        .flatMap(ProvisioningProfile.expirationDate(in:))
 }
 
 /// The three behaviors of one SponsorBlock category, titled with the category; the description
@@ -214,27 +202,6 @@ private struct SkipBehaviorPage: View {
             if let behavior {
                 described = behavior
             }
-        }
-    }
-}
-
-/// The Sync status row's value.
-private struct SyncStateText: View {
-    let state: SyncModel.State
-
-    var body: some View {
-        switch state {
-        case .off: Text("Off")
-        case .syncing: Text("Syncing…")
-        case let .synced(date):
-            // Refreshes the relative time while Settings stays open.
-            TimelineView(.periodic(from: .now, by: 30)) { _ in
-                Text("Synced \(date, format: .relative(presentation: .named))")
-            }
-        case .offline: Text("Offline, will retry")
-        case .failed: Text("Sync failed, will retry")
-        case .tokenRejected: Text("Token rejected")
-        case .updateRequired: Text("Update FooTube on this device")
         }
     }
 }
@@ -315,36 +282,5 @@ private struct DescriptionText: View {
         .font(.callout)
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
-    }
-}
-
-/// Projects FooTube is built on, with their licenses.
-private enum Credit: CaseIterable {
-    case youTubeKit, innerTubeKit, sponsorBlock
-
-    var name: String {
-        switch self {
-        case .youTubeKit: "YouTubeKit"
-        case .innerTubeKit: "InnerTubeKit"
-        case .sponsorBlock: "SponsorBlock"
-        }
-    }
-
-    var license: String {
-        switch self {
-        case .youTubeKit, .innerTubeKit: "MIT"
-        case .sponsorBlock: "CC BY-NC-SA 4.0"
-        }
-    }
-
-    var text: String {
-        switch self {
-        case .youTubeKit:
-            String(localized: "Finds the video streams on this Apple TV. github.com/alexeichhorn/YouTubeKit, MIT License.")
-        case .innerTubeKit:
-            String(localized: "Search, channels, chapters and related videos. A renamed copy of github.com/b5i/YouTubeKit, MIT License.")
-        case .sponsorBlock:
-            String(localized: "Segment data by the SponsorBlock community, sponsor.ajay.app, licensed CC BY-NC-SA 4.0. FooTube asks for segments by the first four characters of a hash of the video ID, so SponsorBlock never receives the video ID itself.")
-        }
     }
 }

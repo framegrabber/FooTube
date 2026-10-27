@@ -34,8 +34,9 @@ final class SyncModel {
 
     private(set) var state: State = .off
 
+    /// Observable through `serverHost`, which is set together with the engine.
     var isConfigured: Bool {
-        engine != nil
+        serverHost != nil
     }
 
     /// The Worker's host while sync is on, for Settings.
@@ -51,6 +52,7 @@ final class SyncModel {
     @ObservationIgnored private var syncing: [SyncStoreName: Int] = [:]
     @ObservationIgnored private var inFlight = 0
     @ObservationIgnored private var timer: Task<Void, Never>?
+    @ObservationIgnored private let configuration: SyncConfigurationStore
     @ObservationIgnored private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "sync")
 
     /// Applies this launch's sync arguments, then syncs the models' stores if a configuration is saved.
@@ -62,6 +64,7 @@ final class SyncModel {
         settings: SettingsModel,
         configuration: SyncConfigurationStore = SyncConfigurationStore(),
     ) {
+        self.configuration = configuration
         do {
             try configuration.applyLaunchChanges()
         } catch {
@@ -81,6 +84,59 @@ final class SyncModel {
             logger.info("Sync off")
             return
         }
+        start(with: saved)
+    }
+
+    /// Why `connect` didn't save a configuration.
+    enum ConnectError: Error {
+        /// URL or token invalid, or the Keychain failed.
+        case configuration(SyncConfigurationError)
+        /// The Worker rejected the token or couldn't be reached.
+        case server(SyncError)
+    }
+
+    /// Settings on iPhone/iPad, where URL and token can be pasted: checks them with one read from the
+    /// Worker (a wrong token, or the add-only inbox token, is rejected there), then saves them like the
+    /// run scripts' file does (URL in `UserDefaults`, token in the Keychain) and syncs right away.
+    func connect(url text: String, token: String) async throws(ConnectError) {
+        let candidate: SyncConfiguration
+        do throws(SyncConfigurationError) {
+            guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)) else { throw .invalidURL(text) }
+            candidate = try SyncConfiguration(url: url, token: token.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch {
+            throw .configuration(error)
+        }
+        do throws(SyncError) {
+            _ = try await SyncClient(baseURL: candidate.url, token: candidate.token).fetch(.skipSettings)
+        } catch {
+            logger.error("Sync configuration not saved: \(error.message, privacy: .public)")
+            throw .server(error)
+        }
+        do throws(SyncConfigurationError) {
+            try configuration.save(candidate)
+        } catch {
+            throw .configuration(error)
+        }
+        logger.info("Sync configured in Settings for \(candidate.url.host() ?? "", privacy: .public)")
+        start(with: candidate)
+        scenePhaseChanged(to: .active) // Settings is on screen: sync now and every 5 minutes
+    }
+
+    /// Settings on iPhone/iPad: forgets URL, token and sync state; local data stays.
+    func turnOff() throws(SyncConfigurationError) {
+        try configuration.reset()
+        timer?.cancel()
+        timer = nil
+        debounces.values.forEach { $0.cancel() }
+        debounces = [:]
+        pending = []
+        engine = nil
+        serverHost = nil
+        logger.info("Sync turned off in Settings")
+        updateState()
+    }
+
+    private func start(with saved: SyncConfiguration) {
         serverHost = saved.url.host()
         engine = SyncEngine(
             transport: SyncClient(baseURL: saved.url, token: saved.token),

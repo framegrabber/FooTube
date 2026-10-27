@@ -131,6 +131,16 @@
         }
       }
     },
+    "Another device saved data in a newer format. Install the current FooTube here; until then that data doesn't sync.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein anderes Gerät hat Daten in einem neueren Format gespeichert. Installiere hier das aktuelle FooTube; bis dahin werden diese Daten nicht synchronisiert."
+          }
+        }
+      }
+    },
     "By default, sponsor segments are skipped automatically and every other category shows a Skip button.": {
       "localizations": {
         "de": {
@@ -147,6 +157,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieses Video kann nicht abgespielt werden: %@"
+          }
+        }
+      }
+    },
+    "Change Server…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server ändern …"
           }
         }
       }
@@ -241,6 +261,26 @@
         }
       }
     },
+    "Clearing removes the videos with their resume positions and watched marks. Subscriptions stay.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernt die Videos samt Wiedergabeposition und Gesehen-Markierung. Abos bleiben erhalten."
+          }
+        }
+      }
+    },
+    "Clearing removes the videos with their resume positions and watched marks. Sync is on: they're cleared on every device of the household.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernt die Videos samt Wiedergabeposition und Gesehen-Markierung. Die Synchronisierung ist an: Sie werden auf jedem Gerät des Haushalts gelöscht."
+          }
+        }
+      }
+    },
     "Clips that show what is coming up in this video or in other videos of a series.": {
       "localizations": {
         "de": {
@@ -261,6 +301,16 @@
         }
       }
     },
+    "Connect": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinden"
+          }
+        }
+      }
+    },
     "Couldn't load from YouTube: %@": {
       "localizations": {
         "de": {
@@ -277,6 +327,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Video konnte nicht geladen werden: %@"
+          }
+        }
+      }
+    },
+    "Couldn't reach the server. Check the address and the connection.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server ist nicht erreichbar. Prüfe die Adresse und die Verbindung."
           }
         }
       }
@@ -341,6 +401,16 @@
         }
       }
     },
+    "Enter the server's address starting with https:// (http:// only for localhost).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib die Adresse des Servers mit https:// ein (http:// nur für localhost)."
+          }
+        }
+      }
+    },
     "Expires": {
       "localizations": {
         "de": {
@@ -381,6 +451,16 @@
         }
       }
     },
+    "Finds the video streams on this device. github.com/alexeichhorn/YouTubeKit, MIT License.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findet die Videostreams auf diesem Gerät. github.com/alexeichhorn/YouTubeKit, MIT-Lizenz."
+          }
+        }
+      }
+    },
     "History": {
       "localizations": {
         "de": {
@@ -417,6 +497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Intro"
+          }
+        }
+      }
+    },
+    "Keep Current Server": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktuellen Server behalten"
           }
         }
       }
@@ -581,6 +671,16 @@
         }
       }
     },
+    "Paste your sync server's URL and its sync token (not the inbox token). FooTube checks both with the server before saving them; the token stays in this device's Keychain and isn't shown again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füge die URL deines Sync-Servers und sein Sync-Token ein (nicht das Inbox-Token). FooTube prüft beides beim Server, bevor es gespeichert wird; das Token bleibt im Schlüsselbund dieses Geräts und wird nicht wieder angezeigt."
+          }
+        }
+      }
+    },
     "Play Now": {
       "localizations": {
         "de": {
@@ -617,6 +717,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spielt YouTube ohne Werbung: Die Streams werden auf diesem Apple TV gefunden und laufen in Apples Player. Nicht mit YouTube oder Google verbunden; YouTube so zu nutzen verstößt gegen dessen Nutzungsbedingungen."
+          }
+        }
+      }
+    },
+    "Plays YouTube without ads: streams are found on this device and play in Apple's player. Not affiliated with YouTube or Google; using YouTube this way is against its Terms of Service.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielt YouTube ohne Werbung: Die Streams werden auf diesem Gerät gefunden und laufen in Apples Player. Nicht mit YouTube oder Google verbunden; YouTube so zu nutzen verstößt gegen dessen Nutzungsbedingungen."
           }
         }
       }
@@ -761,6 +871,26 @@
         }
       }
     },
+    "Server": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server"
+          }
+        }
+      }
+    },
+    "Server URL": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server-URL"
+          }
+        }
+      }
+    },
     "Settings": {
       "localizations": {
         "de": {
@@ -901,6 +1031,16 @@
         }
       }
     },
+    "Sync Token": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync-Token"
+          }
+        }
+      }
+    },
     "Sync failed, will retry": {
       "localizations": {
         "de": {
@@ -917,6 +1057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Die Synchronisierung ist aus: Abos, „Später ansehen“, Verlauf und SponsorBlock-Einstellungen bleiben auf diesem Apple TV. Um sie zwischen den Apple TVs des Haushalts zu teilen, betreibe deinen eigenen Sync-Server und übergib seine URL und sein Token an scripts/run-device.sh (siehe README)."
+          }
+        }
+      }
+    },
+    "Sync is off: subscriptions, Watch Later, History and SponsorBlock settings stay on this device. To share them with the household's other devices, connect your own sync server below (see the README).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Synchronisierung ist aus: Abos, „Später ansehen“, Verlauf und SponsorBlock-Einstellungen bleiben auf diesem Gerät. Um sie mit den anderen Geräten des Haushalts zu teilen, verbinde unten deinen eigenen Sync-Server (siehe README)."
           }
         }
       }
@@ -981,6 +1131,46 @@
         }
       }
     },
+    "The Keychain reported error %lld for the sync token.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Schlüsselbund meldet Fehler %lld für das Sync-Token."
+          }
+        }
+      }
+    },
+    "The server answered with an error. Check the address.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat mit einem Fehler geantwortet. Prüfe die Adresse."
+          }
+        }
+      }
+    },
+    "The server rejected this token. Paste the sync token, not the inbox token.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat dieses Token abgelehnt. Füge das Sync-Token ein, nicht das Inbox-Token."
+          }
+        }
+      }
+    },
+    "The sync configuration couldn't be read.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Sync-Konfiguration konnte nicht gelesen werden."
+          }
+        }
+      }
+    },
     "The sync server answered with an error. FooTube tries again at the next sync; the server's log (wrangler tail) has the details.": {
       "localizations": {
         "de": {
@@ -1001,12 +1191,42 @@
         }
       }
     },
+    "The sync server can't be reached. Changes stay on this device and sync once it's back.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Sync-Server ist nicht erreichbar. Änderungen bleiben auf diesem Gerät und werden synchronisiert, sobald er wieder da ist."
+          }
+        }
+      }
+    },
     "The sync server rejected this Apple TV's token. Run scripts/run-device.sh again with the server's current token.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Der Sync-Server hat das Token dieses Apple TV abgelehnt. Führe scripts/run-device.sh erneut mit dem aktuellen Token des Servers aus."
+          }
+        }
+      }
+    },
+    "The sync server rejected this device's token. Choose Change Server and paste the server's current sync token.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Sync-Server hat das Token dieses Geräts abgelehnt. Wähle „Server ändern“ und füge das aktuelle Sync-Token des Servers ein."
+          }
+        }
+      }
+    },
+    "The token contains spaces or other characters a token can't have. Paste it again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Token enthält Leerzeichen oder andere Zeichen, die ein Token nicht haben kann. Füge es noch einmal ein."
           }
         }
       }
@@ -1021,12 +1241,42 @@
         }
       }
     },
+    "This device stops syncing and forgets the server and its token. Subscriptions, Watch Later and History stay on this device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät synchronisiert nicht mehr und vergisst den Server und sein Token. Abos, „Später ansehen“ und Verlauf bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
     "This install stops launching on %@. Run scripts/run-device.sh again to renew it; subscriptions, history and Watch Later stay.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Diese Installation startet ab %@ nicht mehr. Führe scripts/run-device.sh erneut aus, um sie zu verlängern; Abos, Verlauf und „Später ansehen“ bleiben erhalten."
+          }
+        }
+      }
+    },
+    "This install stops launching on %@. Run scripts/run-ios-device.sh again to renew it; subscriptions, history and Watch Later stay.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Installation startet ab %@ nicht mehr. Führe scripts/run-ios-device.sh erneut aus, um sie zu verlängern; Abos, Verlauf und „Später ansehen“ bleiben erhalten."
+          }
+        }
+      }
+    },
+    "This token has %lld characters; a sync token has at least %lld.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Token hat %1$lld Zeichen; ein Sync-Token hat mindestens %2$lld."
           }
         }
       }
@@ -1067,6 +1317,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Halte ein Video gedrückt und füge es zu „Später ansehen“ hinzu."
+          }
+        }
+      }
+    },
+    "Turn Off Sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung ausschalten"
+          }
+        }
+      }
+    },
+    "Turn off sync?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung ausschalten?"
           }
         }
       }

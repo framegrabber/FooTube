@@ -108,6 +108,8 @@ Or put both variables in `~/.config/footube/sync.env` (shell syntax; another fil
 
 FooTube syncs when it opens, every 5 minutes while it's open, a few seconds after a change, when the player closes and when it goes to the background. **Settings → Sync** shows the state ("Synced 2 minutes ago", "Offline, will retry", "Token rejected") and offers **Sync Now**; a missing network never blocks browsing or playback. A removal (unsubscribe, Watch Later) isn't undone by another Apple TV, even one that was off for months.
 
+**On iPhone and iPad** you can also connect in the app: **Settings → Server**, paste the Worker's URL and the **sync token** (not the inbox token), tap **Connect**. FooTube checks both with the Worker before saving them; a wrong token is rejected with a message, and once saved the token stays in the Keychain and isn't shown again. **Change Server…** and **Turn Off Sync** are below.
+
 For development against a local Worker: `npm run dev` in FooTubeSyncBackend, then `FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<token from its .dev.vars> scripts/run-sim.sh`.
 
 ## Using it

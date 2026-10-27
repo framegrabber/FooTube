@@ -137,3 +137,15 @@ Temporary XCUITest plus `-play` launches, English UI; log via `log stream --leve
 | Picture in Picture | `4haAdmHqGOw` on iPad | Home while playing → log `Picture in Picture started`, PiP window over the home screen (`p3-ipad-picture-in-picture-home.png`). The iPhone 17 Simulator has no PiP at all: AVKit logs `isPictureInPictureSupported NO` and shows no PiP button (iPad Simulator: `YES`) |
 | End without Up next | `jNQXAC9IVRw` (19 s) | Player stays on the last frame; no proposal, no countdown (`p3-iphone-video-ended.png`) |
 | AirPlay | — | AirPlay button in the player's top bar (`p3-iphone-player-controls.png`); not exercised (no receiver) |
+
+### 2026-10-27 — P4 iOS Settings, sync paste-in
+
+`wrangler dev` (FooTubeSyncBackend, port 8793, `--persist-to /tmp/ftv-wrangler`, migrations applied); temporary XCUITest typing URL and tokens from the test runner's environment (never in source or logs). Screenshots `p4-iphone-*.png`.
+
+| Step | Result |
+|---|---|
+| Turn Off Sync (confirmation) | log `Sync turned off in Settings`; Status "Off", Server form shown |
+| `http://127.0.0.1:8793` + a wrong 64-character token → Connect | "The server rejected this token. Paste the sync token, not the inbox token."; log `Sync configuration not saved: Sync Worker rejected the token` (`wrong-token`) |
+| Same URL + the inbox token | Same rejection (`inbox-token`) |
+| Same URL + the sync token | log `Sync configured in Settings for 127.0.0.1`, then all four stores `GET … HTTP 200`; Status "Synced now", Server 127.0.0.1, Sync Now; the URL/token form is gone (`connected`) |
+| Change Server… | Form opens with both fields empty; the saved token is not shown (`change-server-form-empty`) |

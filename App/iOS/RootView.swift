@@ -27,9 +27,7 @@ struct RootView: View {
                 HistoryView(catalog: catalog)
             }
             Tab("Settings", systemImage: "gear", value: .settings) {
-                NavigationStack {
-                    Color.clear.navigationTitle("Settings")
-                }
+                SettingsView()
             }
             Tab("Search", systemImage: "magnifyingglass", value: .search, role: .search) {
                 SearchView(catalog: catalog)

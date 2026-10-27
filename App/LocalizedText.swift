@@ -27,6 +27,30 @@ extension ResolveError {
     }
 }
 
+extension SyncConfigurationError {
+    var userMessage: String {
+        switch self {
+        case .unreadableFile: String(localized: "The sync configuration couldn't be read.")
+        case .invalidURL: String(localized: "Enter the server's address starting with https:// (http:// only for localhost).")
+        case let .tokenTooShort(length):
+            String(localized: "This token has \(length) characters; a sync token has at least \(SyncConfiguration.minimumTokenLength).")
+        case .tokenNotHeaderSafe: String(localized: "The token contains spaces or other characters a token can't have. Paste it again.")
+        case let .keychain(status): String(localized: "The Keychain reported error \(Int(status)) for the sync token.")
+        }
+    }
+}
+
+extension SyncModel.ConnectError {
+    var userMessage: String {
+        switch self {
+        case let .configuration(error): error.userMessage
+        case .server(.unauthorized): String(localized: "The server rejected this token. Paste the sync token, not the inbox token.")
+        case .server(.offline): String(localized: "Couldn't reach the server. Check the address and the connection.")
+        case .server: String(localized: "The server answered with an error. Check the address.")
+        }
+    }
+}
+
 extension SponsorCategory {
     var localizedName: String {
         switch self {
