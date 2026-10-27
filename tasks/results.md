@@ -149,3 +149,16 @@ Temporary XCUITest plus `-play` launches, English UI; log via `log stream --leve
 | Same URL + the inbox token | Same rejection (`inbox-token`) |
 | Same URL + the sync token | log `Sync configured in Settings for 127.0.0.1`, then all four stores `GET … HTTP 200`; Status "Synced now", Server 127.0.0.1, Sync Now; the URL/token form is gone (`connected`) |
 | Change Server… | Form opens with both fields empty; the saved token is not shown (`change-server-form-empty`) |
+
+### 2026-10-27 — P5 `footube://` links and the inbox
+
+`AppLinkTests` (Core) pass. On `iPhone 17` with sync on against `wrangler dev`, temporary XCUITest (links opened with `XCUIDevice.system.open`, confirming the system's "Open in FooTube?" prompt). Screenshots `p5-iphone-*.png`.
+
+| Check | Result |
+|---|---|
+| `POST /v1/inbox` as the Shortcut sends it (inbox token, `{"videoID":"e2_q_fE2uQY","title":"Inbox test from curl"}`) | `201`; Watch Later unchanged until **Refresh**, then log `watchLater: 1 inbox items, 1 new`, `DELETE inbox: HTTP 204` and "Inbox test from curl" is first in Watch Later (`watch-later-before`, `watch-later-after-refresh`) |
+| `footube://watch-later?v=https%3A%2F%2Fyoutu.be%2Faqz-KE-bpKQ%3Fsi%3Dabc&title=Big%20Buck%20Bunny` | Switches to Watch Later, "Big Buck Bunny" added on top (`link-watch-later`) |
+| `footube://watch-later?v=https://m.youtube.com/watch?feature=share&v=jNQXAC9IVRw` (unencoded) | Added as `jNQXAC9IVRw` (no title) (`link-watch-later-bare-id`) |
+| `footube://play?v=dQw4w9WgXcQ` | Player opens and plays (`link-play`) |
+| `footube://nonsense?v=xyz` | Banner "FooTube can't open this link." (`link-invalid`) |
+| Real Shortcut, Safari bookmark on iOS | Not run (needs a real iPhone; owner) |

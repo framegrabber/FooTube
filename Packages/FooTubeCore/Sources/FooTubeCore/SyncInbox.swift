@@ -35,16 +35,7 @@ public enum SyncInbox {
                 guard record.removedAt != nil, record.changedAt < addedAt else { continue }
                 document.entries.remove(at: existing)
             }
-            let video = VideoSummary(
-                id: id,
-                title: item.title ?? id.rawValue,
-                channel: nil,
-                duration: nil,
-                viewCount: nil,
-                published: nil,
-                thumbnail: URL(string: "https://i.ytimg.com/vi/\(id.rawValue)/hqdefault.jpg"),
-            )
-            document.entries.append(WatchLaterRecord(video: video, addedAt: addedAt, changedAt: now))
+            document.entries.append(WatchLaterRecord(video: .bare(id, title: item.title), addedAt: addedAt, changedAt: now))
         }
         document.entries.sort(by: WatchLaterRecord.listOrder)
         return document

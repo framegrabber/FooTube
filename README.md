@@ -112,6 +112,36 @@ FooTube syncs when it opens, every 5 minutes while it's open, a few seconds afte
 
 For development against a local Worker: `npm run dev` in FooTubeSyncBackend, then `FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<token from its .dev.vars> scripts/run-sim.sh`.
 
+### Adding videos from anywhere
+
+With sync on, videos can go into Watch Later from places FooTube doesn't run. They wait in your Worker's inbox and show up in Watch Later on every device at its next sync (on iPhone/iPad and Apple TV, **Refresh** in Watch Later syncs right away). All of these use the Worker's **inbox token** (FooTubeSyncBackend README, step 3), which can only add videos. Never put the household sync token into a bookmark or a Shortcut.
+
+**Bookmark "→ FooTube" (Mac, iPhone, iPad):** generate it as the FooTubeSyncBackend README describes (step 7) and save it as a bookmark in Safari or Chrome. On a YouTube video page, choosing the bookmark adds the video. In Safari on iPhone or iPad, bookmarks synced from the Mac through iCloud work as they are; to create one on the device itself, bookmark any page (Share → Add Bookmark), then open Bookmarks → Edit → the bookmark, and replace its address with the copied `javascript:` line. To use it, open a video on youtube.com in Safari, tap the address bar and choose the bookmark from the list (or open Bookmarks and tap it).
+
+**Shortcut "Add to FooTube" (iPhone, iPad):** adds a video from the share sheet of the YouTube app, Safari or any app that shares a YouTube link, even on a device without FooTube. Build it once in the Shortcuts app:
+
+1. Tap **+** to create a shortcut and rename it to `Add to FooTube` (tap its name at the top → Rename).
+2. Tap **ⓘ** (Details) and turn on **Show in Share Sheet**. Back in the editor, the top block reads "Receive … input from Share Sheet": tap the input types and keep only **URLs**, **Safari web pages** and **Text**. Optionally set "If there's no input" to **Get Clipboard**, so running the shortcut by itself takes a copied link.
+3. Add the action **Match Text**. Pattern: `(?:v=|youtu\.be/|shorts/|live/|embed/)([A-Za-z0-9_-]{11})`, text: **Shortcut Input**.
+4. Add **Get Group from Matched Text** and set it to "Get **Group At Index** 1 in **Matches**".
+5. Add **If**: "If **Group** **does not have any value**". Inside the If (before Otherwise), add **Show Notification** with the text `Not a YouTube video` and **Stop This Shortcut**. Leave Otherwise empty; the next actions go after **End If**.
+6. Optional, for a title instead of the bare video ID in Watch Later: add **Get Contents of URL** with the URL `https://www.youtube.com/oembed?format=json&url=https://youtu.be/` followed by the **Group** variable, then **Get Dictionary Value**: "Get **Value** for `title` in **Contents of URL**".
+7. Add **Get Contents of URL** with the URL `https://footube-sync.<subdomain>.workers.dev/v1/inbox` (your Worker). Tap the arrow (Show More) and set:
+   - **Method:** POST
+   - **Headers:** add a header with key `Authorization` and value `Bearer <inbox token>` (the word Bearer, a space, the inbox token).
+   - **Request Body:** JSON. Add a **Text** field with key `videoID` and value **Group**; with step 6, add a second Text field with key `title` and value **Dictionary Value**.
+8. Add **If**: "If **Contents of URL** **has any value**" (the Worker answers success with an empty body and errors with a JSON message): inside, **Show Alert** with **Contents of URL**; under Otherwise, **Show Notification** with `Added to FooTube`.
+
+To use it, tap **Share** on a video in the YouTube app (or on a youtube.com page in Safari) and choose **Add to FooTube**; it may be under **More** or "Edit Actions" the first time. The request the shortcut sends, as `curl`:
+
+```sh
+curl -X POST https://footube-sync.<subdomain>.workers.dev/v1/inbox \
+  -H "Authorization: Bearer <inbox token>" -H "Content-Type: application/json" \
+  -d '{"videoID":"aqz-KE-bpKQ","title":"Big Buck Bunny"}'
+```
+
+**`footube://` links (iPhone, iPad):** `footube://play?v=<video ID or YouTube URL>` opens FooTube and plays the video; `footube://watch-later?v=<video ID or YouTube URL>` (optionally `&title=<title>`) adds it to Watch Later on that device, which syncs it like any other change. In a shortcut: **URL Encode** the shared link, then **Open URLs** with `footube://watch-later?v=` followed by the encoded text. These need FooTube installed on the device; the inbox Shortcut above doesn't.
+
 ## Using it
 
 - **Tabs:** Subscriptions, Search, Watch Later, History, Settings.

@@ -14,6 +14,7 @@ struct RootView: View {
     @State var feed: FeedModel
     @State private var selectedTab: TabID = .subscriptions
     @State private var didApplyLaunchArguments = false
+    @Environment(WatchLaterModel.self) private var watchLater
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -42,6 +43,17 @@ struct RootView: View {
         }
         .background {
             PlayerHost(playback: playback, session: playback.session)
+        }
+        .onOpenURL { url in
+            switch AppLink(url) {
+            case let .play(id):
+                playback.play(id)
+            case let .watchLater(id, title):
+                watchLater.add(.bare(id, title: title))
+                selectedTab = .watchLater
+            case nil:
+                playback.fail(String(localized: "FooTube can't open this link."))
+            }
         }
         .task {
             // Debug/test hooks (simctl/devicectl launch arguments), once per launch:

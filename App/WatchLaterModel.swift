@@ -29,6 +29,12 @@ final class WatchLaterModel {
         items.contains { $0.id == id }
     }
 
+    /// Adds the video at the front unless it's already saved (`footube://watch-later` links).
+    func add(_ video: VideoSummary) {
+        guard !contains(video.id) else { return }
+        toggle(video)
+    }
+
     /// Adds the video at the front, or removes it if already saved.
     func toggle(_ video: VideoSummary) {
         do {

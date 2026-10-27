@@ -461,6 +461,16 @@
         }
       }
     },
+    "FooTube can't open this link.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FooTube kann diesen Link nicht öffnen."
+          }
+        }
+      }
+    },
     "History": {
       "localizations": {
         "de": {
