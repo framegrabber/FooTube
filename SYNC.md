@@ -5,7 +5,7 @@ Index of the sync initiative. Background and decisions: `docs/ideas/cloudflare-s
 | Module id | Responsibility | Repo | Spec | Depends on |
 |---|---|---|---|---|
 | `sync-backend` | Cloudflare Worker + D1: `GET`/`PUT /v1/stores/:name`, version check, bearer auth, deploy steps. Owns the app–Worker contract. | FooTubeSyncBackend | `FooTubeSyncBackend/SPEC.md` | — |
-| `sync-client` | FooTubeCore: v2 stores with deletion markers, v1 migration, merge rules, `lastSyncAt`, `SyncEngine`. tvOS: launch-argument config, sync on foreground and after changes, status in Settings. | FooTube | `SPEC-sync-client.md` | `sync-backend` |
+| `sync-client` | FooTubeCore: v2 stores with deletion markers, v1 migration, merge rules, `lastSyncAt`, `SyncEngine`. tvOS: config file dropped by the run scripts, sync on foreground and after changes, status in Settings, Watch Later Refresh. | FooTube | `SPEC-sync-client.md` | `sync-backend` |
 | `ios-app` | iPhone/iPad target on FooTubeCore, synced through `sync-client`; watching and collecting (Shortcut to the inbox, `footube://`) | FooTube | `SPEC-ios-app.md` (questions answered 2026-10-27) | `sync-client`, `browser-inbox` |
 | `browser-inbox` | Add-only inbox token, `/add` page, `/v1/inbox`, bookmarklet; apps fold inbox entries into Watch Later | both | `SPEC-browser-inbox.md` | `sync-backend`, `sync-client` |
 
