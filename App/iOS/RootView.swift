@@ -1,8 +1,8 @@
 import FooTubeCore
 import SwiftUI
 
-/// iPhone and iPad: the tabs (a tab bar on iPhone that iPad can turn into a sidebar), and the status of a
-/// video being loaded.
+/// iPhone and iPad: the tabs (a tab bar on iPhone that iPad can turn into a sidebar), the status of a
+/// video being loaded, and the full-screen player.
 struct RootView: View {
     enum TabID: Hashable {
         case subscriptions, search, watchLater, history, settings
@@ -41,6 +41,9 @@ struct RootView: View {
         .environment(feed)
         .overlay(alignment: .top) {
             StatusBanner(status: playback.status)
+        }
+        .background {
+            PlayerHost(playback: playback, session: playback.session)
         }
         .task {
             // Debug/test hooks (simctl/devicectl launch arguments), once per launch:

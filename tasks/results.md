@@ -124,3 +124,16 @@ Driven by a temporary XCUITest (not committed) on `iPhone 17` (portrait) and `iP
 | Settings tab (P4 content) | `settings`, `settings-2` |
 | iPad | Landscape shows the sidebar (Abos, Später ansehen, Verlauf, Einstellungen, Suchen); in portrait the top tab bar scrolls (German tab names are long), with the sidebar button at its leading end |
 | German strings | Every key from `SWIFT_EMIT_LOC_STRINGS=YES` builds (iOS 118 keys, tvOS 113; 141 together) is in `Localizable.xcstrings` with a German translation; no unused keys |
+
+### 2026-10-27 — P3 iOS player
+
+Temporary XCUITest plus `-play` launches, English UI; log via `log stream --level info` (`/tmp/footube-ios-shots/iphone.log`, `ipad.log`).
+
+| Check | Video | Result |
+|---|---|---|
+| Sponsor auto-skip | `zergV5YUDjk` (sponsor 51.2–102.2 s) | log `zergV5YUDjk skipping sponsor 51.179-102.219` at 51 s; "Sponsor skipped" notice top left (`p3-iphone-sponsor-1.png`) |
+| Resume | `zergV5YUDjk` closed with ✕ at 1:59, relaunched with `-play` | log `resuming at 118.54 s, seek finished: true`; player at 2:06 after 6 s (`p3-iphone-resumed.png`) |
+| Chapters | `4haAdmHqGOw` (95 chapters) | log `95 chapters`; Chapters button above the transport bar opens a sheet with thumbnails and start times, current chapter marked; tapping "Moving objects and camera" logs `seeking to chapter at 393.0` and the player is at 6:40 (`p3-iphone-chapters-sheet*.png`, `after-chapter-seek.png`); same on iPad (`seeking to chapter at 762.0`) |
+| Picture in Picture | `4haAdmHqGOw` on iPad | Home while playing → log `Picture in Picture started`, PiP window over the home screen (`p3-ipad-picture-in-picture-home.png`). The iPhone 17 Simulator has no PiP at all: AVKit logs `isPictureInPictureSupported NO` and shows no PiP button (iPad Simulator: `YES`) |
+| End without Up next | `jNQXAC9IVRw` (19 s) | Player stays on the last frame; no proposal, no countdown (`p3-iphone-video-ended.png`) |
+| AirPlay | — | AirPlay button in the player's top bar (`p3-iphone-player-controls.png`); not exercised (no receiver) |

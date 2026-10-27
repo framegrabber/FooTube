@@ -171,6 +171,16 @@
         }
       }
     },
+    "Chapters": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapitel"
+          }
+        }
+      }
+    },
     "Clear Watch History": {
       "localizations": {
         "de": {
@@ -317,6 +327,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abspann und Endcards. Keine Schlussworte, die noch Inhalt haben."
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fertig"
           }
         }
       }
@@ -477,6 +497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nichts gespeichert"
+          }
+        }
+      }
+    },
+    "Now playing": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft gerade"
           }
         }
       }
@@ -1007,6 +1037,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieses Video gibt es in keinem Format, das dieses Apple TV abspielen kann."
+          }
+        }
+      }
+    },
+    "This video has no format this device can play.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Video gibt es in keinem Format, das dieses Gerät abspielen kann."
           }
         }
       }

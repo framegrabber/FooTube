@@ -15,7 +15,12 @@ extension ResolveError {
     /// The technical detail of `noPlayableStream` stays in the log.
     var userMessage: String {
         switch self {
-        case .noPlayableStream: String(localized: "This video has no format this Apple TV can play.")
+        case .noPlayableStream:
+            #if os(tvOS)
+                String(localized: "This video has no format this Apple TV can play.")
+            #else
+                String(localized: "This video has no format this device can play.")
+            #endif
         case let .unavailable(reason): String(localized: "Can't play this video: \(reason)")
         case let .extractionFailed(reason): String(localized: "Couldn't load this video: \(reason)")
         }
