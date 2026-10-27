@@ -157,7 +157,7 @@ P1 Multiplatform target ── P2 iOS screens ── P3 iOS player (PiP, chapter
                         └─ P4 iOS Settings (sync paste-in) ── P5 Adding from anywhere (URL scheme, Shortcut, bookmarklet docs)
 ```
 - [x] P1: Multiplatform target; app compiles on iOS; `check.sh task` builds both
-- [ ] P2: iOS navigation and screens (feed, search, channel, Watch Later, History)
+- [x] P2: iOS navigation and screens (feed, search, channel, Watch Later, History)
 - [ ] P3: iOS player: PiP, AirPlay, SponsorBlock, chapters (no Up next on iOS)
 - [ ] P4: iOS Settings: SponsorBlock, sync status, paste URL/token, clear data
 - [ ] P5: `footube://` URL scheme; README: "Add to FooTube" Shortcut and Safari bookmarklet on iOS

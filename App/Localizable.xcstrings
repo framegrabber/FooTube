@@ -341,6 +341,16 @@
         }
       }
     },
+    "Find videos and channels. Open a channel to subscribe.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finde Videos und Kanäle. Öffne einen Kanal, um ihn zu abonnieren."
+          }
+        }
+      }
+    },
     "Finds the video streams on this Apple TV. github.com/alexeichhorn/YouTubeKit, MIT License.": {
       "localizations": {
         "de": {
@@ -511,6 +521,16 @@
         }
       }
     },
+    "Opens the channel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnet den Kanal"
+          }
+        }
+      }
+    },
     "Outro": {
       "localizations": {
         "de": {
@@ -607,6 +627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wird aktualisiert …"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernen"
           }
         }
       }
@@ -987,6 +1017,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Token abgelehnt"
+          }
+        }
+      }
+    },
+    "Touch and hold a video and choose Add to Watch Later.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halte ein Video gedrückt und füge es zu „Später ansehen“ hinzu."
           }
         }
       }

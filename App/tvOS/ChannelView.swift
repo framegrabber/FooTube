@@ -3,86 +3,56 @@ import SwiftUI
 
 /// Channel header and its uploads, newest first, with paging.
 struct ChannelView: View {
-    let catalog: any Catalog
-    let channel: ChannelRef
+    @State private var model: ChannelModel
 
     @Environment(SubscriptionsModel.self) private var subscriptions
-    @State private var page: ChannelPage?
-    @State private var videos: [VideoSummary] = []
-    @State private var next: PageCursor?
-    @State private var isLoadingMore = false
-    @State private var error: String?
+
+    init(catalog: any Catalog, channel: ChannelRef) {
+        _model = State(initialValue: ChannelModel(catalog: catalog, channel: channel))
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 48) {
                 header
-                if let error {
+                if let error = model.error {
                     ErrorMessage(message: error)
                 }
-                if page == nil, error == nil {
+                if model.page == nil, model.error == nil {
                     ProgressView().frame(maxWidth: .infinity)
                 }
                 // All uploads belong to this channel, so no "Open channel" menu here.
-                VideoGrid(videos: videos, onReachEnd: loadMore)
-                if isLoadingMore {
+                VideoGrid(videos: model.videos, onReachEnd: model.loadMore)
+                if model.isLoadingMore {
                     ProgressView().frame(maxWidth: .infinity)
                 }
             }
             .padding(80)
         }
         .scrollClipDisabled() // focused cards lift past the edges
-        .task(id: channel.id) { await load() }
+        .task(id: model.channel.id) { await model.load() }
     }
 
     /// A full-width focus section, so pressing up from any first-row card lands on Subscribe.
     private var header: some View {
         HStack(spacing: 32) {
-            RemoteImage(url: page?.avatar, size: CGSize(width: 160, height: 160))
+            RemoteImage(url: model.page?.avatar, size: CGSize(width: 160, height: 160))
                 .frame(width: 160, height: 160)
                 .clipShape(.circle)
             VStack(alignment: .leading, spacing: 12) {
-                Text(page?.channel.name ?? channel.name ?? String(localized: "Channel"))
+                Text(model.name ?? String(localized: "Channel"))
                     .font(.title2)
-                if let subscribers = page?.subscriberCount {
+                if let subscribers = model.page?.subscriberCount {
                     Text(subscribers)
                         .foregroundStyle(.secondary)
                 }
-                Button(subscriptions.isSubscribed(channel.id) ? LocalizedStringKey("Unsubscribe") : LocalizedStringKey("Subscribe")) {
-                    subscriptions.toggle(page?.channel ?? channel, avatar: page?.avatar)
+                Button(subscriptions.isSubscribed(model.channel.id) ? LocalizedStringKey("Unsubscribe") : LocalizedStringKey("Subscribe")) {
+                    subscriptions.toggle(model.page?.channel ?? model.channel, avatar: model.page?.avatar)
                 }
-                .disabled(page == nil) // wait for the real name and avatar
+                .disabled(model.page == nil) // wait for the real name and avatar
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .focusSection()
-    }
-
-    private func load() async {
-        guard page == nil else { return } // `.task` re-runs when navigating back; keep paged results
-        do throws(CatalogError) {
-            let loaded = try await catalog.channel(channel.id)
-            page = loaded
-            videos = [].appendingUnique(loaded.videos.items)
-            next = loaded.videos.next
-            error = nil
-        } catch {
-            self.error = error.userMessage
-        }
-    }
-
-    private func loadMore() {
-        guard let cursor = next, !isLoadingMore else { return }
-        isLoadingMore = true
-        Task {
-            defer { isLoadingMore = false }
-            do throws(CatalogError) {
-                let more = try await catalog.moreChannelVideos(cursor)
-                videos = videos.appendingUnique(more.items)
-                next = more.next
-            } catch {
-                self.error = error.userMessage
-            }
-        }
     }
 }

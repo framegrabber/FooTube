@@ -8,35 +8,33 @@ struct SearchView: View {
     let catalog: any Catalog
     @Binding var path: [ChannelRef]
 
+    @State private var model: SearchModel
     @State private var query = ""
-    @State private var searchedQuery: String?
-    @State private var results: [VideoSummary] = []
-    @State private var channels: [ChannelSummary] = []
-    @State private var next: PageCursor?
-    @State private var isSearching = false
-    @State private var isLoadingMore = false
-    @State private var error: String?
-    /// YouTube's completions for the typed text, shown under the search field.
-    @State private var suggestions: [String] = []
     @State private var didApplyLaunchArguments = false
+
+    init(catalog: any Catalog, path: Binding<[ChannelRef]>) {
+        self.catalog = catalog
+        _path = path
+        _model = State(initialValue: SearchModel(catalog: catalog))
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 48) {
-                    if let error {
+                    if let error = model.error {
                         ErrorMessage(message: error)
                     }
-                    if isSearching {
+                    if model.isSearching {
                         ProgressView().frame(maxWidth: .infinity)
-                    } else if let searchedQuery, results.isEmpty, channels.isEmpty, error == nil {
+                    } else if let searchedQuery = model.searchedQuery, model.results.isEmpty, model.channels.isEmpty, model.error == nil {
                         ContentUnavailableView.search(text: searchedQuery)
                     }
-                    if !channels.isEmpty {
-                        ChannelRow(channels: channels) { path.append($0.ref) }
+                    if !model.channels.isEmpty {
+                        ChannelRow(channels: model.channels) { path.append($0.ref) }
                     }
-                    VideoGrid(videos: results, onReachEnd: loadMore, onOpenChannel: { path.append($0) })
-                    if isLoadingMore {
+                    VideoGrid(videos: model.results, onReachEnd: model.loadMore, onOpenChannel: { path.append($0) })
+                    if model.isLoadingMore {
                         ProgressView().frame(maxWidth: .infinity)
                     }
                 }
@@ -45,24 +43,12 @@ struct SearchView: View {
             .scrollClipDisabled() // focused lockups lift past the scroll view's edges
             .searchable(text: $query, prompt: "Search YouTube")
             .searchSuggestions {
-                ForEach(suggestions, id: \.self) { suggestion in
+                ForEach(model.suggestions, id: \.self) { suggestion in
                     Text(suggestion).searchCompletion(suggestion)
                 }
             }
             .task(id: query) {
-                // Debounce typing: suggestions first, then the search itself. An empty query keeps
-                // the last results; returning to this view (task re-runs on appear) must not replace
-                // paged results with page 1 again.
-                let text = query.trimmingCharacters(in: .whitespaces)
-                guard !text.isEmpty, text != searchedQuery else { return }
-                try? await Task.sleep(for: .milliseconds(250))
-                guard !Task.isCancelled else { return }
-                let completions = await (try? catalog.suggestions(text)) ?? []
-                guard !Task.isCancelled else { return }
-                suggestions = completions
-                try? await Task.sleep(for: .milliseconds(350))
-                guard !Task.isCancelled else { return }
-                await search(text)
+                await model.queryChanged(query)
             }
             .navigationDestination(for: ChannelRef.self) { channel in
                 ChannelView(catalog: catalog, channel: channel)
@@ -77,40 +63,6 @@ struct SearchView: View {
             }
             if let id = UserDefaults.standard.string(forKey: "channel") {
                 path.append(ChannelRef(id: id, name: nil))
-            }
-        }
-    }
-
-    private func search(_ text: String) async {
-        isSearching = true
-        defer { isSearching = false }
-        do throws(CatalogError) {
-            let page = try await catalog.search(text)
-            guard !Task.isCancelled else { return }
-            searchedQuery = text
-            results = [].appendingUnique(page.items)
-            channels = [].appendingUnique(page.channels)
-            next = page.next
-            error = nil
-        } catch {
-            self.error = error.userMessage
-        }
-    }
-
-    private func loadMore() {
-        guard let cursor = next, !isLoadingMore else { return }
-        isLoadingMore = true
-        let forQuery = searchedQuery
-        Task {
-            defer { isLoadingMore = false }
-            do throws(CatalogError) {
-                let page = try await catalog.moreSearchResults(cursor)
-                guard forQuery == searchedQuery else { return } // a new search started meanwhile
-                results = results.appendingUnique(page.items)
-                channels = channels.appendingUnique(page.channels)
-                next = page.next
-            } catch {
-                self.error = error.userMessage
             }
         }
     }

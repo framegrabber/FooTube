@@ -108,3 +108,19 @@ Simulators: `Apple TV` (tvOS 26.2), `iPhone 17` and `iPad Pro 11-inch (M5)` (iOS
 - tvOS UI tests on `Apple TV`: 9 tests, 0 failures (264 s; `/tmp/ui-p1.xcresult`).
 - iPhone 17 Simulator: launches to the tab bar (`p1-iphone-launch.png`; iOS 26 shows the Search tab as a separate button at the trailing end).
 - `navigationMarkerGroups`, `nextContentProposal`, `contextualActions` and `customInfoViewControllers` are tvOS-only in the iOS 26.2 SDK headers (`AVPlayerItem+AVKitAdditions.h` has no `navigationMarkerGroups` for iOS; `AVPlayerViewController.h` marks the others `API_UNAVAILABLE(ios)`), so Up next and the chapter markers sit behind `#if os(tvOS)` in `PlayerSession`, and iOS gets its own chapter list and Skip button (P3).
+
+### 2026-10-27 — P2 iOS screens
+
+Driven by a temporary XCUITest (not committed) on `iPhone 17` (portrait) and `iPad Pro 11-inch (M5)` (landscape), German UI; screenshots `p2-iphone-*.png`, `p2-ipad-*.png`.
+
+| Check | Result |
+|---|---|
+| Subscriptions | Avatar row ("Alle", Alexandre Chappel, Blender, Rick Astley) above the feed, "Aktualisiert jetzt", full-width cards on iPhone, two columns on iPad; tapping Blender filters the feed ("Blender ›" header) (`subscriptions`, `subscriptions-filtered`) |
+| Long-press menu | "Blender öffnen" and "Zu „Später ansehen“ hinzufügen", or "Aus „Später ansehen“ entfernen" for a saved video; Remove then Add both work (`context-menu`, `context-menu-after-remove`) |
+| Watch Later | List with the two videos added from the menu, Refresh button in the toolbar, long-press menu, swipe left shows "Entfernen" (`watch-later*`) |
+| History | Played video with progress stripe (`history`) |
+| Search | Empty state "YouTube durchsuchen"; suggestions while typing ("blender open mo" → 8 suggestions); results with a "Kanäle" row (Blender Studio) above the videos (`search-*`) |
+| Channel | Blender Studio: avatar, "577.000 Abonnenten", **Abonnieren** button, uploads (`channel`) |
+| Settings tab (P4 content) | `settings`, `settings-2` |
+| iPad | Landscape shows the sidebar (Abos, Später ansehen, Verlauf, Einstellungen, Suchen); in portrait the top tab bar scrolls (German tab names are long), with the sidebar button at its leading end |
+| German strings | Every key from `SWIFT_EMIT_LOC_STRINGS=YES` builds (iOS 118 keys, tvOS 113; 141 together) is in `Localizable.xcstrings` with a German translation; no unused keys |
