@@ -118,6 +118,16 @@ final class SyncModel {
         Task { await syncAll() }
     }
 
+    /// Refresh in the Watch Later tab: one round for that store right away, which also folds in videos
+    /// bookmarked in a browser. Returns false if the round failed (retried at the next trigger).
+    func refresh(_ store: SyncStoreName) async -> Bool {
+        guard engine != nil else { return false }
+        debounces[store]?.cancel()
+        debounces[store] = nil
+        await sync(store)
+        return !pending.contains(store)
+    }
+
     /// The player closed: push the positions it recorded now instead of after the debounce.
     func playerClosed() {
         guard engine != nil, pending.contains(.history) else { return }

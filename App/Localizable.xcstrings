@@ -271,6 +271,16 @@
         }
       }
     },
+    "Couldn't reach the sync server. Try again later.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync-Server nicht erreichbar. Versuche es später noch einmal."
+          }
+        }
+      }
+    },
     "Couldn't refresh the feed. Check the connection and choose Refresh.": {
       "localizations": {
         "de": {
@@ -587,6 +597,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aktualisieren"
+          }
+        }
+      }
+    },
+    "Refreshing…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird aktualisiert …"
           }
         }
       }
