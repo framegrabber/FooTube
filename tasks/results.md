@@ -69,3 +69,27 @@ Decision: go. Not yet known: start time and scrubbing smoothness on the Apple TV
 | Live stream | `-play rFZHOHl-L8A` | Plays normally, "0 I-frame playlists" |
 | Start time | `first frame after`, 5 launches of `aqz-KE-bpKQ` each, medians | Before 2.42 s (resolve 1.76); build-first 2.84 s (resolve 2.12, +0.36 s, within the run-to-run resolve spread of up to 0.8 s). Device measurement pending |
 | Real YouTube | `FOOTUBE_NETWORK_TESTS=1`, `ResolverNetworkTests` | Big Buck Bunny, music video, > 2 h video: 2 I-frame playlists each; livestream: 0; made-for-kids still fails (known) |
+
+## Phase 10: Sync
+
+### 2026-10-27 — S7 two Simulators against `wrangler dev`, then the deployed Worker
+
+Devices: **A** = `Apple TV` (existing data from v1 and earlier sync tests), **B** = `Apple TV 4K (3rd generation)` (fresh install). Configured with the configuration file the run scripts drop into the app container (S5b); actions driven by remote-control UI tests; evidence from screenshots, the Worker's documents (`curl` with the dev token) and the `sync` log category. Local Worker: `wrangler dev --port 8791 --local` on an empty D1.
+
+| Criterion (SPEC-sync-client) | Steps | Result |
+|---|---|---|
+| Fresh device gets everything | A pushes its v1-migrated data (4 × `404` → `PUT 200`), B configured afterwards | B shows A's 3 subscriptions in the sidebar and A's watched marks on the feed cards ("Watched" on Blender Conference 2026 Recap) |
+| 1. Subscription | A launched with `-subscribe <Rick Astley>` | A: `PUT subscriptions 200` ~3 s after the change; B after its next foreground: Rick Astley in the sidebar |
+| 1. Watch Later add | A: long-press a search result → Add to Watch Later | Worker document gains `YE7VzlLtp-4` "Big Buck Bunny"; B's Watch Later shows it first |
+| 2. Watch Later removal | B: long-press → Remove from Watch Later (`r1jOsar2zV4`) | Worker: `removedAt` set on `r1jOsar2zV4`; A's Watch Later then lists only Big Buck Bunny |
+| 1. Resume position | A: `-play aqz-KE-bpKQ`, ~45 s, Menu closes the player (immediate history push) | `watchHistory.v2` on both devices: `aqz-KE-bpKQ` position 151.886 s of 634.566 s, `updatedAt` 04:44:38.755Z (the moment the player closed) |
+| 1. SponsorBlock setting | B: Settings → Sponsor → Off | A after foreground: Settings shows "Sponsor: Off" |
+| 3. Clear History | A: Settings → Clear Watch History → confirm | Both devices: `clearedAt` 2026-10-27T04:54:37.579Z, 0 entries; B's History tab: "No History" |
+| 5-min timer | App left in the foreground for hours while this task was paused | Worker log: one `GET` per store every ~5 minutes (≈ 85 rounds) |
+| Token never in logs | `log show --last 30m --info --debug`, all subsystems, both Simulators, after configuring with the dev and the deployed token | 0 matches for either token, 0 for `footube-sync.json` (one earlier dev-token leak from the S5 launch-argument design is in A's older log; dev token only) |
+
+**Deployed Worker** (`footube-sync.<subdomain>.workers.dev`, after the backend's weak-ETag fix 9610590): A configured → 4 × `PUT 200`; B configured → all four "Worker up to date"; A `-subscribe <Veritasium>` → `PUT subscriptions: HTTP 200` with `If-Match` (no `412`); B after foreground: "subscriptions attempt 1: 5 entries, local changed", Veritasium in its subscriptions. Afterwards `DELETE FROM stores` on the remote D1 (4 rows; `COUNT(*)` = 0) (once more after `scripts/check.sh` ran the opt-in `SyncNetworkTests` against the deployed Worker because its variables were still exported in the shell: one test `subscriptions` document, deleted; that test also showed the edge's weak `W/"n"` ETag on `GET`) and `-syncReset YES` on both Simulators ("Sync configuration reset by launch argument", "Sync off"; `sync.url.v1` gone).
+
+Found while doing this: switching a device from one Worker to another kept `lastSyncAt`, so the pruned-elsewhere rule would have dropped local entries the new Worker never saw; fixed in S5c (a new URL forgets `lastSyncAt`).
+
+Not verified here: the Apple TV HD (owner), background sync inside the background task, the `devicectl device copy to` command (the paired Apple TV "Wohnzimmer" was unavailable; flags checked against `devicectl device copy to --help` only).
