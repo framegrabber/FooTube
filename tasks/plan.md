@@ -149,7 +149,19 @@ S1 Documents + merge rules ── S2 v2 stores + v1 migration ── S3 SyncClie
   - [x] I1–I2: Worker inbox and `/add` page, deployed (FooTubeSyncBackend)
   - [x] I3: client inbox folding in the Watch Later round
   - [ ] Owner: real bookmark click in Safari and Chrome
-- `ios-app`: `SPEC-ios-app.md`; blocked on its open questions (owner).
+- `ios-app`: `SPEC-ios-app.md`; open questions answered 2026-10-27; tasks P1–P6 in `tasks/todo.md` (Phase 12), waiting for spec approval and the iOS Simulator runtime download.
+
+### Phase 12: iPhone/iPad app — details in `tasks/todo.md` P1–P6
+```
+P1 Multiplatform target ── P2 iOS screens ── P3 iOS player (PiP, chapters, Up next) ── P6 Scripts, UI tests, two-platform sync check
+                        └─ P4 iOS Settings (sync paste-in) ── P5 Adding from anywhere (URL scheme, Shortcut, bookmarklet docs)
+```
+- [ ] P1: Multiplatform target; app compiles on iOS; `check.sh task` builds both
+- [ ] P2: iOS navigation and screens (feed, search, channel, Watch Later, History)
+- [ ] P3: iOS player: PiP, AirPlay, SponsorBlock, chapters, Up next overlay
+- [ ] P4: iOS Settings: SponsorBlock, sync status, paste URL/token, clear data
+- [ ] P5: `footube://` URL scheme; README: "Add to FooTube" Shortcut and Safari bookmarklet on iOS
+- [ ] P6: `run-sim.sh --ios/--ipad`, `run-ios-device.sh`, UI tests, iPhone ↔ Apple TV sync check, docs
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
