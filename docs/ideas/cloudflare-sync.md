@@ -22,7 +22,7 @@ Recorded in `FooTubeSyncBackend/SPEC.md` (section "Contract"); both repos implem
 - `GET /v1/stores/:name` → document and `ETag`. `PUT /v1/stores/:name` with `If-Match` (or `If-None-Match: *` to create) → new `ETag`, or `412` with the current document.
 - `Authorization: Bearer <household token>` on every store request.
 - Inbox: add-only token, accepted only for adding video IDs; apps fold inbox entries into Watch Later on their next sync and fetch title and thumbnail themselves.
-- FooTubeCore tests the contract offline against recorded responses, plus an opt-in network test gated on `FOOTUBE_SYNC_URL` / `FOOTUBE_SYNC_TOKEN`. No secret is committed in either repo.
+- FooTubeCore tests the contract offline against recorded responses, plus an opt-in network test against `wrangler dev` gated on `FOOTUBE_SYNC_TEST_URL` / `FOOTUBE_SYNC_TEST_TOKEN` (localhost only). No secret is committed in either repo.
 
 ### Bookmarklet
 Opens `https://<worker>/add?v=<id>#<inbox token>` in a new tab; the Worker's small page sends the request itself. This avoids YouTube's content security policy blocking a request from inside youtube.com [unverified], and the token after `#` never reaches server logs. A leaked bookmark (bookmarks sync through browser clouds) can only add videos to Watch Later.

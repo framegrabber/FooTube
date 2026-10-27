@@ -60,7 +60,7 @@ Unchanged (Swift 6.2, SwiftUI, FooTubeCore, Swift Testing). `URLSession` for the
 Existing commands, plus:
 ```
 Local Worker:     (in ../FooTubeSyncBackend) npm run dev               → http://localhost:8787, token from its .dev.vars
-Sync network test: FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<dev token> swift test --package-path Packages/FooTubeCore --filter SyncNetworkTests
+Sync network test: FOOTUBE_SYNC_TEST_URL=http://localhost:8787 FOOTUBE_SYNC_TEST_TOKEN=<dev token> swift test --package-path Packages/FooTubeCore --filter SyncNetworkTests   (localhost only)
 Simulator w/ sync: FOOTUBE_SYNC_URL=… FOOTUBE_SYNC_TOKEN=… scripts/run-sim.sh
 Device w/ sync:    FOOTUBE_SYNC_URL=… FOOTUBE_SYNC_TOKEN=… scripts/run-device.sh   (or ~/.config/footube/sync.env)
 ```

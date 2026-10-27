@@ -4,7 +4,7 @@
 //
 // Run against a fresh `wrangler dev` of ../FooTubeSyncBackend (the Example expects `subscriptions`
 // and `watchLater` never written, so use an empty --persist-to directory):
-//   FOOTUBE_SYNC_URL=http://localhost:8790 FOOTUBE_SYNC_TOKEN=<dev token> node scripts/record-sync-fixtures.mjs
+//   FOOTUBE_SYNC_TEST_URL=http://localhost:8790 FOOTUBE_SYNC_TEST_TOKEN=<dev token> node scripts/record-sync-fixtures.mjs
 // Optional FOOTUBE_SYNC_UNCONFIGURED_URL: a second `wrangler dev` whose SYNC_TOKEN is too short, for
 // the `not_configured` response. Records status, ETag, Content-Type, WWW-Authenticate and bodies;
 // never the token or the Authorization header.
@@ -13,11 +13,15 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const base = process.env.FOOTUBE_SYNC_URL;
-const token = process.env.FOOTUBE_SYNC_TOKEN;
+const base = process.env.FOOTUBE_SYNC_TEST_URL;
+const token = process.env.FOOTUBE_SYNC_TEST_TOKEN;
 const unconfigured = process.env.FOOTUBE_SYNC_UNCONFIGURED_URL;
 if (!base || !token) {
-  console.error("Set FOOTUBE_SYNC_URL and FOOTUBE_SYNC_TOKEN (wrangler dev only).");
+  console.error("Set FOOTUBE_SYNC_TEST_URL and FOOTUBE_SYNC_TEST_TOKEN (wrangler dev only).");
+  process.exit(1);
+}
+if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) {
+  console.error("FOOTUBE_SYNC_TEST_URL must be a local wrangler dev (localhost or 127.0.0.1).");
   process.exit(1);
 }
 

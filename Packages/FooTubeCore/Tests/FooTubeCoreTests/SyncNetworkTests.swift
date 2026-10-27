@@ -3,13 +3,22 @@ import Foundation
 import Testing
 
 /// Runs the Contract's Example against a real sync Worker. Opt-in, and only against `wrangler dev`
-/// (it writes the Worker's `subscriptions` store; never point it at the household's Worker):
+/// (it writes the Worker's stores; never point it at the household's Worker):
 /// `(cd ../FooTubeSyncBackend && npm run dev)`, then
-/// `FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<token from its .dev.vars> swift test --package-path Packages/FooTubeCore --filter SyncNetworkTests`.
+/// `FOOTUBE_SYNC_TEST_URL=http://localhost:8787 FOOTUBE_SYNC_TEST_TOKEN=<token from its .dev.vars> swift test --package-path Packages/FooTubeCore --filter SyncNetworkTests`.
+/// Own variable names, not the run scripts' `FOOTUBE_SYNC_URL`/`FOOTUBE_SYNC_TOKEN`, and loopback
+/// hosts only, so a shell set up to run the app against the household's Worker never runs this.
+private let localWorker: (url: URL, token: String)? = {
+    let environment = ProcessInfo.processInfo.environment
+    guard let url = environment["FOOTUBE_SYNC_TEST_URL"].flatMap(URL.init(string:)),
+          let token = environment["FOOTUBE_SYNC_TEST_TOKEN"],
+          ["localhost", "127.0.0.1"].contains(url.host()) else { return nil }
+    return (url, token)
+}()
+
 @Suite(
     "SyncClient against wrangler dev",
-    .enabled(if: ProcessInfo.processInfo.environment["FOOTUBE_SYNC_URL"] != nil
-        && ProcessInfo.processInfo.environment["FOOTUBE_SYNC_TOKEN"] != nil),
+    .enabled(if: localWorker != nil),
     .serialized,
 )
 struct SyncNetworkTests {
@@ -17,9 +26,9 @@ struct SyncNetworkTests {
     let token: String
 
     init() throws {
-        let environment = ProcessInfo.processInfo.environment
-        baseURL = try #require(environment["FOOTUBE_SYNC_URL"].flatMap(URL.init(string:)))
-        token = try #require(environment["FOOTUBE_SYNC_TOKEN"])
+        let worker = try #require(localWorker)
+        baseURL = worker.url
+        token = worker.token
     }
 
     /// A subscriptions document whose only entry is a removal marker, so the app hides it if a

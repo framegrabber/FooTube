@@ -15,8 +15,8 @@ Read CONSTRAINTS.md before writing code. Do not weaken it to make a change pass.
 | Generate Xcode project | `xcodegen generate` (never hand-edit `FooTube.xcodeproj`; it is gitignored) |
 | Core build / tests | `swift build --package-path Packages/FooTubeCore` / `swift test --package-path Packages/FooTubeCore` |
 | Network tests (real YouTube) | `FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore` |
-| Sync network tests (`wrangler dev` only, they write its stores) | `FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<token from ../FooTubeSyncBackend/.dev.vars> swift test --package-path Packages/FooTubeCore --filter SyncNetworkTests` |
-| Re-record sync fixtures (fresh `wrangler dev --persist-to <empty dir>`, migrations applied) | `FOOTUBE_SYNC_URL=… FOOTUBE_SYNC_TOKEN=… [FOOTUBE_SYNC_UNCONFIGURED_URL=…] node scripts/record-sync-fixtures.mjs` |
+| Sync network tests (`wrangler dev` on localhost only, they write its stores; own variables so a shell set up for `run-sim.sh` never runs them) | `FOOTUBE_SYNC_TEST_URL=http://localhost:8787 FOOTUBE_SYNC_TEST_TOKEN=<token from ../FooTubeSyncBackend/.dev.vars> swift test --package-path Packages/FooTubeCore --filter SyncNetworkTests` |
+| Re-record sync fixtures (fresh `wrangler dev --persist-to <empty dir>`, migrations applied) | `FOOTUBE_SYNC_TEST_URL=… FOOTUBE_SYNC_TEST_TOKEN=… [FOOTUBE_SYNC_UNCONFIGURED_URL=…] node scripts/record-sync-fixtures.mjs` |
 | Debug launch arguments | `scripts/run-sim.sh -play <id or URL>` (`RootView`), `-subscribe <id,id>` (`RootView`), `-search <query>`, `-channel <channelID>` (`SearchView`, Search tab); once per launch; also work with `devicectl … process launch` |
 | Build + run in Simulator | `scripts/run-sim.sh` |
 | Build + run on the Apple TV | `scripts/run-device.sh [launch args]` (first paired Apple TV; `FOOTUBE_DEVICE=<name or id>` to choose; needs `Config/Signing.local.xcconfig`; free team → rebuild every 7 days) |
