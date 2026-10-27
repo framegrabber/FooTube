@@ -134,17 +134,21 @@ S1 Documents + merge rules ── S2 v2 stores + v1 migration ── S3 SyncClie
 - [x] S2: Stores on v2 documents with v1 migration
 - [x] S3: `SyncClient` for the Contract; fixtures recorded from `wrangler dev`; opt-in network test
 - [x] S4: `SyncEngine` rounds, 412 retry, `lastSyncAt`, format guard; two-device engine tests
-- [x] S5: Configuration (launch arguments, Keychain, scripts) and `SyncModel` triggers in the app
+- [x] S5: Configuration (file dropped into the app container by the run scripts, Keychain; S5b/S5c) and `SyncModel` triggers in the app
 - [x] S6: Settings Sync section, status texts, wording about where data lives, SPEC/PRODUCT boundary changes
 - [x] S7: Two Simulators against `wrangler dev`, then against the deployed Worker; README/AGENTS; results
+- [x] S8: Review fixes (save locally only after the Worker has the merge, strict pruned-elsewhere, background task covers in-flight rounds, player stopped before the history push, weak ETags, network tests on localhost only)
 
 ### Checkpoint: Sync
-- [ ] `SPEC-sync-client.md` success criteria 1–6 (1–5 in the Simulator; device by owner)
-- [ ] code-review-and-quality and security-and-hardening on the sync code; human sign-off
+- [x] `SPEC-sync-client.md` success criteria 1–6 in the Simulator (`tasks/results.md` → Phase 10); [ ] on the Apple TV HD (owner)
+- [x] Code review (reviewer agent) and security review of the Worker; findings fixed in S8 and `sync-backend: security review fixes`
+- [ ] Human sign-off
 
 ### Later modules
 - `browser-inbox`: `SPEC-browser-inbox.md`; tasks I1–I3 in `tasks/todo.md`.
-  - [x] I3: client inbox folding in the Watch Later round (I1–I2: FooTubeSyncBackend)
+  - [x] I1–I2: Worker inbox and `/add` page, deployed (FooTubeSyncBackend)
+  - [x] I3: client inbox folding in the Watch Later round
+  - [ ] Owner: real bookmark click in Safari and Chrome
 - `ios-app`: `SPEC-ios-app.md`; blocked on its open questions (owner).
 
 ## Risks and Mitigations
