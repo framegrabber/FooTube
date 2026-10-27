@@ -197,4 +197,54 @@ struct SyncClientTests {
             #expect(detail.contains("(\(code.rawValue))"))
         }
     }
+
+    // MARK: Browser inbox
+
+    @Test func `the inbox is read with the sync token, oldest first, dates with milliseconds`() async throws {
+        let body = #"{"items":[{"seq":3,"videoID":"aqz-KE-bpKQ","title":"Big Buck Bunny","addedAt":"2027-01-15T08:00:00.123Z"},{"seq":5,"videoID":"aiDHXKRxLeQ","addedAt":"2027-01-15T08:01:00.000Z"}]}"#
+        let server = StubURLProtocol.Server([.response(status: 200, headers: ["Content-Type": "application/json"], body: Data(body.utf8))])
+        let items = try await client(server).inbox()
+        #expect(items == [
+            InboxItem(seq: 3, videoID: "aqz-KE-bpKQ", title: "Big Buck Bunny", addedAt: Date(timeIntervalSince1970: 1_800_000_000.123)),
+            InboxItem(seq: 5, videoID: "aiDHXKRxLeQ", title: nil, addedAt: Date(timeIntervalSince1970: 1_800_000_060)),
+        ])
+        let request = try #require(server.requests.first)
+        #expect(request.method == "GET")
+        #expect(request.path == "/v1/inbox")
+        #expect(request.header("Authorization") == "Bearer \(Self.token)")
+    }
+
+    @Test(arguments: [
+        (500, #"{"error":"not_configured","message":"INBOX_TOKEN is not set"}"#),
+        (404, #"{"error":"not_found","message":"no such route"}"#),
+    ])
+    func `a Worker without an inbox answers nil`(status: Int, body: String) async throws {
+        let server = StubURLProtocol.Server([.response(status: status, body: Data(body.utf8))])
+        #expect(try await client(server).inbox() == nil)
+    }
+
+    @Test func `other inbox errors are errors`() async {
+        let server = StubURLProtocol.Server([
+            .response(status: 500, body: Data(#"{"error":"internal","message":"boom"}"#.utf8)),
+            .response(status: 401),
+            .response(status: 200, body: Data("not json".utf8)),
+        ])
+        let client = client(server)
+        #expect(await syncError { () async throws(SyncError) in try await client.inbox() } == .server(status: 500))
+        #expect(await syncError { () async throws(SyncError) in try await client.inbox() } == .unauthorized)
+        #expect(await syncError { () async throws(SyncError) in try await client.inbox() } == .invalidDocument(detail: "inbox unreadable"))
+    }
+
+    @Test func `clearing the inbox deletes through a sequence number`() async throws {
+        let server = StubURLProtocol.Server([.response(status: 204), .response(status: 401), .response(status: 400)])
+        let client = client(server)
+        try await client.clearInbox(through: 7)
+        #expect(await syncError { () async throws(SyncError) in try await client.clearInbox(through: 7) } == .unauthorized)
+        #expect(await syncError { () async throws(SyncError) in try await client.clearInbox(through: 7) } == .server(status: 400))
+        let request = try #require(server.requests.first)
+        #expect(request.method == "DELETE")
+        #expect(request.path == "/v1/inbox")
+        #expect(request.query == "through=7")
+        #expect(request.header("Authorization") == "Bearer \(Self.token)")
+    }
 }

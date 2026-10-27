@@ -93,3 +93,7 @@ Devices: **A** = `Apple TV` (existing data from v1 and earlier sync tests), **B*
 Found while doing this: switching a device from one Worker to another kept `lastSyncAt`, so the pruned-elsewhere rule would have dropped local entries the new Worker never saw; fixed in S5c (a new URL forgets `lastSyncAt`).
 
 Not verified here: the Apple TV HD (owner), background sync inside the background task, the `devicectl device copy to` command (the paired Apple TV "Wohnzimmer" was unavailable; flags checked against `devicectl device copy to --help` only).
+
+### 2026-10-27 — I3 browser inbox folding in the `Apple TV` Simulator against `wrangler dev`
+
+`POST /v1/inbox` with the dev inbox token (`{"videoID":"eRsGyueVLvQ","title":"Sintel (bookmarked in a browser)"}`) → `201`; app brought to the foreground → log: `GET inbox: HTTP 200`, `PUT watchLater: HTTP 200` (3 entries), `DELETE inbox: HTTP 204`, "1 inbox items, 1 new"; the Worker's inbox is empty afterwards and Watch Later shows "Sintel (bookmarked in a browser)" first, with the `i.ytimg.com` thumbnail and no channel/duration yet (filled in by the catalog when played).

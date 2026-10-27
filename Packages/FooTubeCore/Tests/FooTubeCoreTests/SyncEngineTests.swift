@@ -3,7 +3,8 @@ import Foundation
 import Testing
 
 /// An in-memory Worker implementing the Contract: ETags per version, `If-Match`/`If-None-Match: *`,
-/// `412` with the current document and ETag (none when the store doesn't exist).
+/// `412` with the current document and ETag (none when the store doesn't exist); the browser inbox
+/// once `enableInbox()` was called (before that it answers like a Worker without `INBOX_TOKEN`).
 actor FakeWorker: SyncTransport {
     private var stores: [SyncStoreName: (data: Data, version: Int)] = [:]
     private var version = 0
@@ -13,6 +14,49 @@ actor FakeWorker: SyncTransport {
     private var foreignWrites: [SyncStoreName: [Data]] = [:]
     private var holdingPuts = false
     private var heldPuts: [CheckedContinuation<Void, Never>] = []
+    private var inboxItems: [InboxItem]?
+    private var inboxSeq = 0
+    private var clearFailure: SyncError?
+
+    func inbox() async throws(SyncError) -> [InboxItem]? {
+        requests.append("GET inbox")
+        if let failure {
+            throw failure
+        }
+        return inboxItems
+    }
+
+    func clearInbox(through seq: Int) async throws(SyncError) {
+        requests.append("DELETE inbox")
+        if let error = failure ?? clearFailure {
+            throw error
+        }
+        inboxItems?.removeAll { $0.seq <= seq }
+    }
+
+    func enableInbox() {
+        inboxItems = inboxItems ?? []
+    }
+
+    /// `POST /v1/inbox`: a repeat of a video only updates its title.
+    func addToInbox(_ videoID: String, title: String?, at date: Date) {
+        enableInbox()
+        if let index = inboxItems?.firstIndex(where: { $0.videoID == videoID }) {
+            let item = inboxItems![index]
+            inboxItems![index] = InboxItem(seq: item.seq, videoID: videoID, title: title ?? item.title, addedAt: item.addedAt)
+            return
+        }
+        inboxSeq += 1
+        inboxItems?.append(InboxItem(seq: inboxSeq, videoID: videoID, title: title, addedAt: date))
+    }
+
+    var inboxCount: Int? {
+        inboxItems?.count
+    }
+
+    func failClearingInbox(with error: SyncError?) {
+        clearFailure = error
+    }
 
     func fetch(_ store: SyncStoreName) async throws(SyncError) -> (data: Data, etag: String)? {
         requests.append("GET \(store.rawValue)")
@@ -396,7 +440,7 @@ struct SyncEngineTests {
         let living = Device(worker, clock: TestClock(start))
         let statuses = await living.engine.syncAll()
         #expect(Set(statuses.values) == [.synced(start)])
-        #expect(await worker.requests.sorted() == SyncStoreName.allCases.map { "GET \($0.rawValue)" }.sorted())
+        #expect(await worker.requests.sorted() == (SyncStoreName.allCases.map { "GET \($0.rawValue)" } + ["GET inbox"]).sorted())
     }
 
     @Test func `an unchanged store only reads, and lastSyncAt survives a relaunch`() async throws {

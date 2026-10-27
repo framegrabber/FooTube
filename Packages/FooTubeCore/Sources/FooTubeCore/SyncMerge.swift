@@ -26,7 +26,7 @@ public enum SyncMerge {
         var merged: [Record.Key: Record] = [:]
         for record in local.map({ $0.clamped(now: now) }) {
             let prunedElsewhere = remote != nil && record.removedAt == nil && !remoteKeys.contains(record.key)
-                && lastSyncAt.map { record.changedAt <= $0 } == true
+                && lastSyncAt.map { record.changedAt < $0 } == true
             guard !prunedElsewhere else { continue }
             merged[record.key] = merged[record.key].map { winner($0, record) } ?? record
         }

@@ -83,8 +83,10 @@ struct SyncMergeTests {
         let local = subscriptions(channel("gone", changed: -100 * day), channel("kept", changed: -100 * day))
         let remote = subscriptions(channel("kept", changed: -100 * day))
         #expect(ids(merge(local, remote, lastSyncAt: now - 50 * day, now: now)) == ["kept"])
-        // At the boundary: changed exactly at the last sync still counts as synced.
-        #expect(ids(merge(local, remote, lastSyncAt: now - 100 * day, now: now)) == ["kept"])
+        #expect(ids(merge(local, remote, lastSyncAt: now - 100 * day + 0.001, now: now)) == ["kept"])
+        // At the boundary: changed in the same millisecond as the last sync's read may not be on the
+        // Worker yet (stamped after the read), so it is kept and pushed.
+        #expect(ids(merge(local, remote, lastSyncAt: now - 100 * day, now: now)) == ["gone", "kept"])
     }
 
     @Test func `a local entry changed after the last sync is kept to be pushed`() {

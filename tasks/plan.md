@@ -144,6 +144,7 @@ S1 Documents + merge rules ── S2 v2 stores + v1 migration ── S3 SyncClie
 
 ### Later modules
 - `browser-inbox`: `SPEC-browser-inbox.md`; tasks I1–I3 in `tasks/todo.md`.
+  - [x] I3: client inbox folding in the Watch Later round (I1–I2: FooTubeSyncBackend)
 - `ios-app`: `SPEC-ios-app.md`; blocked on its open questions (owner).
 
 ## Risks and Mitigations

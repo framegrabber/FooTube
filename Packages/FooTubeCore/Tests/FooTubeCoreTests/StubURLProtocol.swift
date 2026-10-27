@@ -12,6 +12,7 @@ final class StubURLProtocol: URLProtocol {
     struct Request: Sendable {
         let method: String
         let path: String
+        let query: String?
         let headers: [String: String]
         let body: Data
         let timeout: TimeInterval
@@ -61,6 +62,7 @@ final class StubURLProtocol: URLProtocol {
         let recorded = Request(
             method: request.httpMethod ?? "GET",
             path: request.url?.path ?? "",
+            query: request.url?.query,
             headers: request.allHTTPHeaderFields ?? [:],
             body: request.httpBody ?? request.httpBodyStream.map(Self.readAll) ?? Data(),
             timeout: request.timeoutInterval,

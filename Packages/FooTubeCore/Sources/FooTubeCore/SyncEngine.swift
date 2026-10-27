@@ -133,7 +133,7 @@ public final class SyncEngine {
         do throws(SyncError) {
             let syncedAt = switch store {
             case .subscriptions: try await round(store, subscriptions)
-            case .watchLater: try await round(store, watchLater)
+            case .watchLater: try await watchLaterRound()
             case .history: try await round(store, history)
             case .skipSettings: try await round(store, skipSettings)
             }
@@ -149,6 +149,29 @@ public final class SyncEngine {
         }
         statuses[store] = status
         return status
+    }
+
+    /// The Watch Later round, then the browser inbox (SPEC-browser-inbox → Client): items not yet in
+    /// Watch Later are folded in (`SyncInbox.fold`), pushed with another round, and only then deleted
+    /// from the Worker. If the push or the delete fails, the items stay in the inbox and are folded
+    /// again next time; folding skips videos already live, so nothing is duplicated.
+    private func watchLaterRound() async throws(SyncError) -> Date {
+        var syncedAt = try await round(.watchLater, watchLater)
+        guard let items = try await transport.inbox(), let last = items.last?.seq else { return syncedAt }
+        let local = watchLater.document()
+        let folded = SyncInbox.fold(items, into: local, now: SyncCoding.timestamp(now()))
+        if folded != local {
+            do throws(SyncDocumentError) {
+                try watchLater.replace(folded)
+            } catch {
+                throw .invalidDocument(detail: "local document not saved")
+            }
+            onLocalChange(.watchLater)
+            syncedAt = try await round(.watchLater, watchLater)
+        }
+        try await transport.clearInbox(through: last)
+        logger.info("watchLater: \(items.count) inbox items, \(folded.entries.count - local.entries.count) new")
+        return syncedAt
     }
 
     /// Returns the new `lastSyncAt`.
