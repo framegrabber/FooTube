@@ -55,6 +55,52 @@ struct SyncNetworkTests {
         #expect(current.etag == second)
     }
 
+    /// Two devices (own `UserDefaults` suites and engines) against the Worker: subscribe on one, see it
+    /// on the other, unsubscribe there, see it gone on the first. Leaves only a removal marker.
+    @MainActor
+    @Test func `two devices sync a subscribe and an unsubscribe through the Worker`() async throws {
+        func device() throws -> (SubscriptionStore, SyncEngine) {
+            let suite = "footube-network-\(UUID().uuidString)"
+            let defaults = try #require(UserDefaults(suiteName: suite))
+            defaults.removePersistentDomain(forName: suite)
+            let subscriptions = SubscriptionStore(defaults: defaults)
+            let engine = SyncEngine(
+                transport: SyncClient(baseURL: baseURL, token: token),
+                subscriptions: subscriptions,
+                watchLater: WatchLaterStore(defaults: defaults),
+                history: WatchHistory(defaults: defaults),
+                skipSettings: SkipSettingsStore(defaults: defaults),
+                defaults: defaults,
+            )
+            return (subscriptions, engine)
+        }
+        let (livingStore, living) = try device()
+        let (bedroomStore, bedroom) = try device()
+        let channel = ChannelRef(id: "UCsyncNetwork\(UUID().uuidString.prefix(8))", name: "Network test – Grüße")
+
+        try livingStore.subscribe(channel, avatar: nil)
+        guard case .synced = await living.sync(.subscriptions) else {
+            Issue.record("living room round failed: \(living.status(.subscriptions))")
+            return
+        }
+        guard case .synced = await bedroom.sync(.subscriptions) else {
+            Issue.record("bedroom round failed: \(bedroom.status(.subscriptions))")
+            return
+        }
+        #expect(bedroomStore.isSubscribed(channel.id))
+
+        try bedroomStore.unsubscribe(channel.id)
+        guard case .synced = await bedroom.sync(.subscriptions) else {
+            Issue.record("bedroom push failed: \(bedroom.status(.subscriptions))")
+            return
+        }
+        guard case .synced = await living.sync(.subscriptions) else {
+            Issue.record("living room pull failed: \(living.status(.subscriptions))")
+            return
+        }
+        #expect(!livingStore.isSubscribed(channel.id))
+    }
+
     @Test func `a wrong token is rejected on read and write`() async {
         let client = SyncClient(baseURL: baseURL, token: "wrong-\(UUID().uuidString)")
         await #expect(throws: SyncError.unauthorized) { try await client.fetch(.subscriptions) }

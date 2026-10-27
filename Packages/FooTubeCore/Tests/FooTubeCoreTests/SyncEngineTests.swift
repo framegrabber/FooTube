@@ -17,6 +17,9 @@ actor FakeWorker: SyncTransport {
     private var inboxItems: [InboxItem]?
     private var inboxSeq = 0
     private var clearFailure: SyncError?
+    /// ETags as Cloudflare's edge sends them on compressed responses (`W/"n"`).
+    private var weakETags = false
+    private(set) var preconditions: [SyncClient.Precondition] = []
 
     func inbox() async throws(SyncError) -> [InboxItem]? {
         requests.append("GET inbox")
@@ -63,11 +66,12 @@ actor FakeWorker: SyncTransport {
         if let failure {
             throw failure
         }
-        return stores[store].map { ($0.data, Self.etag($0.version)) }
+        return stores[store].map { ($0.data, etag($0.version)) }
     }
 
     func put(_ store: SyncStoreName, data: Data, precondition: SyncClient.Precondition) async throws(SyncError) -> SyncClient.PutResult {
         requests.append("PUT \(store.rawValue)")
+        preconditions.append(precondition)
         if holdingPuts {
             await withCheckedContinuation { heldPuts.append($0) }
         }
@@ -81,11 +85,11 @@ actor FakeWorker: SyncTransport {
         let current = stores[store]
         let holds = switch precondition {
         case .create: current == nil
-        case let .replace(etag): current.map { Self.etag($0.version) == etag } ?? false
+        case let .replace(sent): current.map { etag($0.version) == sent } ?? false
         }
-        guard holds else { return .conflict(data: current?.data, etag: current.map { Self.etag($0.version) }) }
+        guard holds else { return .conflict(data: current?.data, etag: current.map { etag($0.version) }) }
         write(data, to: store)
-        return .stored(Self.etag(version))
+        return .stored(etag(version))
     }
 
     func data(_ store: SyncStoreName) -> Data? {
@@ -119,8 +123,12 @@ actor FakeWorker: SyncTransport {
         heldPuts.count
     }
 
-    private static func etag(_ version: Int) -> String {
-        "\"\(version)\""
+    func useWeakETags() {
+        weakETags = true
+    }
+
+    private func etag(_ version: Int) -> String {
+        weakETags ? "W/\"\(version)\"" : "\"\(version)\""
     }
 }
 
@@ -280,7 +288,8 @@ struct SyncEngineTests {
         #expect(living.engine.status(.subscriptions) == .failed(.conflictPersisted))
 
         #expect(await living.engine.sync(.subscriptions) == .synced(start))
-        #expect(living.subscriptions.channels().map(\.name) == ["A", "B", "Blender", "C"])
+        // The failed round saved nothing locally; the Worker now holds only the last foreign write.
+        #expect(living.subscriptions.channels().map(\.name) == ["Blender", "C"])
     }
 
     @Test func `a device offline for 100 days doesn't bring back what was removed elsewhere`() async throws {
@@ -484,5 +493,77 @@ struct SyncEngineTests {
         #expect(await firstRound.value == .synced(start + 1))
         #expect(await secondCall.value == .synced(start + 1))
         #expect(try await remote(SubscriptionsDocument.self, worker).entries.map(\.id).sorted() == [blender.id, rick.id].sorted())
+    }
+
+    @Test func `a change in the same millisecond as the round's read survives and is pushed`() async throws {
+        let worker = FakeWorker()
+        let clock = TestClock(start)
+        let living = Device(worker, clock: clock)
+        try living.subscriptions.subscribe(blender, avatar: nil)
+        await worker.holdPuts()
+        let firstRound = Task { await living.engine.sync(.subscriptions) }
+        while await worker.heldPutCount == 0 {
+            await Task.yield()
+        }
+        // No clock advance: Rick's changedAt equals the read time that becomes lastSyncAt.
+        try living.subscriptions.subscribe(rick, avatar: nil)
+        let secondCall = Task { await living.engine.sync(.subscriptions) }
+        await Task.yield()
+        await worker.releasePuts()
+
+        #expect(await firstRound.value == .synced(start))
+        #expect(await secondCall.value == .synced(start))
+        #expect(living.subscriptions.channels().map(\.id) == [blender.id, rick.id])
+        #expect(try await remote(SubscriptionsDocument.self, worker).entries.map(\.id).sorted() == [blender.id, rick.id].sorted())
+    }
+
+    @Test func `a round that fails after its GET saves nothing, so an unsubscribe made meanwhile isn't undone later`() async throws {
+        let worker = FakeWorker()
+        let clock = TestClock(start)
+        let living = Device(worker, clock: clock)
+        let bedroom = Device(worker, clock: clock)
+        try living.subscriptions.subscribe(blender, avatar: nil)
+        await living.engine.sync(.subscriptions)
+
+        // The bedroom TV reads the Worker (Blender), then its PUT of its own change goes nowhere.
+        clock.advance(by: 60)
+        try bedroom.subscriptions.subscribe(rick, avatar: nil)
+        await worker.holdPuts()
+        let failing = Task { await bedroom.engine.sync(.subscriptions) }
+        while await worker.heldPutCount == 0 {
+            await Task.yield()
+        }
+        await worker.fail(with: .offline(detail: "lost"))
+        await worker.releasePuts()
+        #expect(await failing.value == .failed(.offline(detail: "lost")))
+        #expect(!bedroom.subscriptions.isSubscribed(blender.id))
+        await worker.fail(with: nil)
+
+        // The living room unsubscribes; the marker is pruned 100 days later.
+        clock.advance(by: 60)
+        try living.subscriptions.unsubscribe(blender.id)
+        await living.engine.sync(.subscriptions)
+        clock.advance(by: 100 * day)
+        await living.engine.sync(.subscriptions)
+        #expect(try await remote(SubscriptionsDocument.self, worker).entries.map(\.id) == [])
+
+        clock.advance(by: 60)
+        await bedroom.engine.sync(.subscriptions)
+        await living.engine.sync(.subscriptions)
+        for device in [living, bedroom] {
+            #expect(!device.subscriptions.isSubscribed(blender.id))
+            #expect(device.subscriptions.isSubscribed(rick.id))
+        }
+    }
+
+    @Test func `a weak ETag from the GET goes back verbatim in If-Match`() async throws {
+        let worker = FakeWorker()
+        await worker.useWeakETags()
+        let living = Device(worker, clock: TestClock(start))
+        try living.subscriptions.subscribe(blender, avatar: nil)
+        await living.engine.sync(.subscriptions)
+        try living.subscriptions.subscribe(rick, avatar: nil)
+        #expect(await living.engine.sync(.subscriptions) == .synced(start))
+        #expect(await worker.preconditions == [.create, .replace(#"W/"1""#)])
     }
 }

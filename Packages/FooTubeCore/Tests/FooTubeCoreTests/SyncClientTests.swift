@@ -198,6 +198,18 @@ struct SyncClientTests {
         }
     }
 
+    @Test func `a weak ETag from the edge is returned and sent back verbatim`() async throws {
+        let server = StubURLProtocol.Server([
+            .response(status: 200, headers: ["ETag": #"W/"7""#, "Content-Type": "application/json"], body: Data(#"{"format":1,"entries":[]}"#.utf8)),
+            .response(status: 200, headers: ["ETag": #""8""#]),
+        ])
+        let client = client(server)
+        let fetched = try #require(try await client.fetch(.subscriptions))
+        #expect(fetched.etag == #"W/"7""#)
+        #expect(try await client.put(.subscriptions, data: fetched.data, precondition: .replace(fetched.etag)) == .stored(#""8""#))
+        #expect(server.requests.last?.header("If-Match") == #"W/"7""#)
+    }
+
     // MARK: Browser inbox
 
     @Test func `the inbox is read with the sync token, oldest first, dates with milliseconds`() async throws {

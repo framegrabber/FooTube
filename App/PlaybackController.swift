@@ -14,7 +14,10 @@ final class PlaybackController {
 
     var session: PlayerSession? {
         didSet {
-            if oldValue != nil, session == nil {
+            if let oldValue, session == nil {
+                // Records the final position before the immediate history push (stopping is
+                // idempotent; the player view stops it again when it goes away).
+                oldValue.stop()
                 onPlayerClosed?()
             }
         }

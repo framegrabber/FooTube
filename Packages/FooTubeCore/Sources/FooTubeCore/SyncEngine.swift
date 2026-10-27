@@ -4,13 +4,16 @@ import os
 /// Syncs the four local stores with the household's Worker (SPEC-sync-client → Sync engine). Knows
 /// nothing about when to sync: the app calls `sync(_:)`/`syncAll()` on its triggers.
 ///
-/// One round per store: `GET` → merge with the local document → save locally if that changed
-/// (`onLocalChange`) → `PUT` if the merged document differs from the Worker's (`If-Match`, or
-/// `If-None-Match: *` after a `404`) → on `412` merge again with the document in the response, at most
-/// `maxAttempts` times → `lastSyncAt` = when the local document was read for the merge that reached
-/// the Worker. Local read, merge and save happen without suspending, on the main actor where every
-/// store write happens, so a change made while a request is in flight is never lost; its own round
-/// pushes it.
+/// One round per store: `GET` → merge with the local document → `PUT` if the merged document differs
+/// from the Worker's (`If-Match`, or `If-None-Match: *` after a `404`) → on `412` merge again with the
+/// document in the response, at most `maxAttempts` times → once the Worker has the merged document
+/// (stored, or already up to date): merge it into the local document as it is now and save if that
+/// changed (`onLocalChange`), and set `lastSyncAt` to when the local document was read for that merge.
+/// A failed round leaves local data untouched: saving the Worker's changes before they reached the
+/// Worker would let the next round take them as already synced (pruned-elsewhere) although the Worker
+/// never got them. Local reads, merges and saves happen without suspending, on the main actor where
+/// every store write happens, so a change made while a request is in flight is never lost: the final
+/// merge keeps it (changed at or after `lastSyncAt`) and its own round pushes it.
 @MainActor
 public final class SyncEngine {
     /// Where one store's sync stands on this device.
@@ -186,28 +189,19 @@ public final class SyncEngine {
             let local = store.document()
             let merged = local.merged(with: remoteDocument, lastSyncAt: lastSyncAt(name), now: readAt)
             let mergedData = try encode(merged)
-            let localChanged = try mergedData != encode(local)
-            if localChanged {
-                do throws(SyncDocumentError) {
-                    try store.replace(merged)
-                } catch {
-                    throw .invalidDocument(detail: "local document not saved")
-                }
-                onLocalChange(name)
-            }
             // Nothing to create while the merged document is still empty.
             let workerData = try encode(remoteDocument ?? Store.Document.empty)
-            let summary = "\(name.rawValue) attempt \(attempt): \(merged.entryCount) entries, local \(localChanged ? "changed" : "unchanged")"
+            let summary = "\(name.rawValue) attempt \(attempt): \(merged.entryCount) entries"
             guard mergedData != workerData else {
-                logger.info("\(summary, privacy: .public), Worker up to date")
-                setLastSyncAt(readAt, for: name)
+                let changed = try commit(merged, readAt: readAt, to: store, name)
+                logger.info("\(summary, privacy: .public), local \(changed ? "changed" : "unchanged"), Worker up to date")
                 return readAt
             }
             let precondition: SyncClient.Precondition = remote.map { .replace($0.etag) } ?? .create
             switch try await transport.put(name, data: mergedData, precondition: precondition) {
             case .stored:
-                logger.info("\(summary, privacy: .public), pushed")
-                setLastSyncAt(readAt, for: name)
+                let changed = try commit(merged, readAt: readAt, to: store, name)
+                logger.info("\(summary, privacy: .public), local \(changed ? "changed" : "unchanged"), pushed")
                 return readAt
             case let .conflict(data?, etag?):
                 logger.info("\(summary, privacy: .public), conflict")
@@ -220,6 +214,30 @@ public final class SyncEngine {
             }
         }
         throw .conflictPersisted
+    }
+
+    /// The Worker has `merged`: merges it into the local document as it is now (changes made while the
+    /// request was in flight are at or after `readAt` and stay) and records `readAt` as `lastSyncAt`.
+    /// Returns whether the local document changed.
+    private func commit<Store: SyncableStore>(
+        _ merged: Store.Document,
+        readAt: Date,
+        to store: Store,
+        _ name: SyncStoreName,
+    ) throws(SyncError) -> Bool {
+        let current = store.document()
+        let updated = current.merged(with: merged, lastSyncAt: readAt, now: readAt)
+        let changed = try encode(updated) != encode(current)
+        if changed {
+            do throws(SyncDocumentError) {
+                try store.replace(updated)
+            } catch {
+                throw .invalidDocument(detail: "local document not saved")
+            }
+            onLocalChange(name)
+        }
+        setLastSyncAt(readAt, for: name)
+        return changed
     }
 
     private func decode<Document: SyncDocument>(_: Document.Type, from data: Data) throws(SyncError) -> Document {

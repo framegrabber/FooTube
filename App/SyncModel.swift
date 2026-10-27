@@ -46,6 +46,9 @@ final class SyncModel {
     @ObservationIgnored private var debounces: [SyncStoreName: Task<Void, Never>] = [:]
     /// Stores changed locally since their last successful round.
     @ObservationIgnored private var pending: Set<SyncStoreName> = []
+    /// Rounds in flight per store; their changes count as pending when the app goes to the background
+    /// (the request may not finish before tvOS suspends the app).
+    @ObservationIgnored private var syncing: [SyncStoreName: Int] = [:]
     @ObservationIgnored private var inFlight = 0
     @ObservationIgnored private var timer: Task<Void, Never>?
     @ObservationIgnored private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "sync")
@@ -137,7 +140,7 @@ final class SyncModel {
     }
 
     private func syncPendingInBackground() {
-        let stores = pending.sorted { $0.rawValue < $1.rawValue }
+        let stores = pending.union(syncing.keys).sorted { $0.rawValue < $1.rawValue }
         debounces.values.forEach { $0.cancel() }
         debounces = [:]
         guard !stores.isEmpty else { return }
@@ -153,31 +156,37 @@ final class SyncModel {
     private func syncAll() async {
         guard let engine else { return }
         pending = []
-        begin()
+        begin(SyncStoreName.allCases)
         let statuses = await engine.syncAll()
         for (store, status) in statuses where status.isFailure {
             pending.insert(store)
         }
-        end()
+        end(SyncStoreName.allCases)
     }
 
     private func sync(_ store: SyncStoreName) async {
         guard let engine else { return }
         pending.remove(store)
-        begin()
+        begin([store])
         if await engine.sync(store).isFailure {
             pending.insert(store)
         }
-        end()
+        end([store])
     }
 
-    private func begin() {
+    private func begin(_ stores: [SyncStoreName]) {
         inFlight += 1
+        for store in stores {
+            syncing[store, default: 0] += 1
+        }
         updateState()
     }
 
-    private func end() {
+    private func end(_ stores: [SyncStoreName]) {
         inFlight -= 1
+        for store in stores {
+            syncing[store] = syncing[store].flatMap { $0 > 1 ? $0 - 1 : nil }
+        }
         updateState()
     }
 
