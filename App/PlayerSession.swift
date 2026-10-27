@@ -6,8 +6,9 @@ import os
 import UIKit
 
 /// One playback: owns the player, applies SponsorBlock skips, resumes and records the watch
-/// position, shows the video's chapters as chapter markers, proposes a related video at the end
-/// ("Up next"), and logs playback metrics (time to first frame, resolution, dropped frames).
+/// position, loads the video's chapters (tvOS: chapter markers; iOS: `chapters` for the player's
+/// chapter list), proposes a related video at the end on tvOS ("Up next"), and logs playback metrics
+/// (time to first frame, resolution, dropped frames).
 @MainActor
 @Observable
 final class PlayerSession: Identifiable {
@@ -26,8 +27,15 @@ final class PlayerSession: Identifiable {
     private(set) var offeredSegment: SkipSegment?
     /// Brief message after an automatic skip.
     private(set) var notice: String?
-    /// Related video proposed when this one ends; nil until the watch page has loaded, or if none fits.
-    private(set) var upNext: VideoSummary?
+    #if os(tvOS)
+        /// Related video proposed when this one ends; nil until the watch page has loaded, or if none fits.
+        private(set) var upNext: VideoSummary?
+    #else
+        /// The video's chapters once the watch page has loaded; empty for videos without chapters.
+        private(set) var chapters: [Chapter] = []
+        /// Playhead in seconds, updated twice a second (the chapter list marks the current chapter).
+        private(set) var position = 0.0
+    #endif
 
     /// Title, channel and thumbnail for the History tab; nil when played by ID only.
     private let video: VideoSummary?
@@ -52,9 +60,16 @@ final class PlayerSession: Identifiable {
 
     /// Seconds of playback between saved positions.
     private static let recordInterval = 5.0
-    /// Seconds the Up next countdown runs after the video ends before the proposal plays.
-    private static let upNextCountdown = 10.0
-    private static let chapterArtwork = (width: 320, height: 180)
+    #if os(tvOS)
+        /// Seconds the Up next countdown runs after the video ends before the proposal plays.
+        private static let upNextCountdown = 10.0
+        private static let chapterArtwork = (width: 320, height: 180)
+    #endif
+
+    /// Title for the player and Now Playing; nil when played by ID only.
+    var title: String? {
+        video?.title
+    }
 
     nonisolated var id: VideoID {
         source.id
@@ -148,12 +163,26 @@ final class PlayerSession: Identifiable {
         logger.info("\(line, privacy: .public)")
     }
 
-    /// Up next was accepted: stops and empties the player. AVKit expects the next item right away
-    /// and otherwise replays this finished one from the start while the next video resolves.
-    func finish() {
-        stop()
-        player.replaceCurrentItem(with: nil)
-    }
+    #if os(tvOS)
+        /// Up next was accepted: stops and empties the player. AVKit expects the next item right away
+        /// and otherwise replays this finished one from the start while the next video resolves.
+        func finish() {
+            stop()
+            player.replaceCurrentItem(with: nil)
+        }
+    #else
+        /// The user chose a chapter in the chapter list.
+        func seek(to chapter: Chapter) {
+            let line = "\(source.id) seeking to chapter at \(chapter.start)"
+            logger.info("\(line, privacy: .public)")
+            position = chapter.start
+            player.seek(
+                to: CMTime(seconds: chapter.start, preferredTimescale: 600),
+                toleranceBefore: .zero,
+                toleranceAfter: CMTime(seconds: 0.5, preferredTimescale: 600),
+            )
+        }
+    #endif
 
     /// The user pressed the skip button for the offered segment.
     func skipOffered() {
@@ -165,6 +194,9 @@ final class PlayerSession: Identifiable {
 
     private func timeChanged(to seconds: Double) {
         guard seconds.isFinite else { return }
+        #if os(iOS)
+            position = seconds
+        #endif
         if tracksProgress, abs(seconds - lastRecordedPosition) >= Self.recordInterval {
             recordProgress()
         }
@@ -230,9 +262,10 @@ final class PlayerSession: Identifiable {
         return item.status == .readyToPlay ? item : nil
     }
 
-    /// Loads the watch page: proposes the first fitting related video for the end, then shows the
-    /// chapters as chapter markers, first titles only, then again with their thumbnails once loaded.
-    /// Live streams (no finite duration) get neither.
+    /// Loads the watch page. tvOS: proposes the first fitting related video for the end, then shows
+    /// the chapters as chapter markers, first titles only, then again with their thumbnails once
+    /// loaded. iOS (no system Up next or chapter markers): publishes `chapters` for the player's
+    /// chapter list. Live streams (no finite duration) get neither.
     private func loadDetails() async {
         let details: VideoDetails
         do throws(CatalogError) {
@@ -243,59 +276,67 @@ final class PlayerSession: Identifiable {
             return
         }
         guard let item = await readyItem(), item.duration.seconds.isFinite else { return }
-        let duration = item.duration.seconds
-        if let next = details.upNext(after: id, isWatched: { history.isWatched($0) }) {
-            await propose(next, on: item)
-        }
-        guard !details.chapters.isEmpty, !Task.isCancelled else { return }
-        item.navigationMarkerGroups = Self.markerGroups(details.chapters, duration: duration, artwork: [:])
-        var artwork: [URL: Data] = [:]
-        for url in details.chapters.compactMap(\.thumbnail) {
-            let request = RemoteImageLoader.Request(url: url, pixelWidth: Self.chapterArtwork.width, pixelHeight: Self.chapterArtwork.height)
-            artwork[url] = await RemoteImageLoader.shared.image(for: request)?.jpegData(compressionQuality: 0.8)
-            guard !Task.isCancelled else { return }
-        }
-        item.navigationMarkerGroups = Self.markerGroups(details.chapters, duration: duration, artwork: artwork)
-        let line = "\(source.id) \(details.chapters.count) chapters, up next: \(upNext?.id.rawValue ?? "none")"
+        #if os(tvOS)
+            let duration = item.duration.seconds
+            if let next = details.upNext(after: id, isWatched: { history.isWatched($0) }) {
+                await propose(next, on: item)
+            }
+            guard !details.chapters.isEmpty, !Task.isCancelled else { return }
+            item.navigationMarkerGroups = Self.markerGroups(details.chapters, duration: duration, artwork: [:])
+            var artwork: [URL: Data] = [:]
+            for url in details.chapters.compactMap(\.thumbnail) {
+                let request = RemoteImageLoader.Request(url: url, pixelWidth: Self.chapterArtwork.width, pixelHeight: Self.chapterArtwork.height)
+                artwork[url] = await RemoteImageLoader.shared.image(for: request)?.jpegData(compressionQuality: 0.8)
+                guard !Task.isCancelled else { return }
+            }
+            item.navigationMarkerGroups = Self.markerGroups(details.chapters, duration: duration, artwork: artwork)
+            let line = "\(source.id) \(details.chapters.count) chapters, up next: \(upNext?.id.rawValue ?? "none")"
+        #else
+            guard !details.chapters.isEmpty, !Task.isCancelled else { return }
+            chapters = details.chapters
+            let line = "\(source.id) \(details.chapters.count) chapters"
+        #endif
         logger.info("\(line, privacy: .public)")
     }
 
-    /// Sets the item's content proposal; the player presents it when the video ends.
-    private func propose(_ next: VideoSummary, on item: AVPlayerItem) async {
-        var preview: UIImage?
-        if let url = next.thumbnail {
-            preview = await RemoteImageLoader.shared.image(for: .init(url: url, pixelWidth: 960, pixelHeight: 540))
-        }
-        guard !Task.isCancelled else { return }
-        let proposal = AVContentProposal(contentTimeForTransition: .indefinite, title: next.title, previewImage: preview)
-        proposal.automaticAcceptanceInterval = Self.upNextCountdown
-        item.nextContentProposal = proposal
-        upNext = next
-    }
-
-    /// One chapter marker per chapter, each lasting until the next one (the last until the end).
-    private static func markerGroups(_ chapters: [Chapter], duration: Double, artwork: [URL: Data]) -> [AVNavigationMarkersGroup] {
-        let markers = chapters.enumerated().compactMap { index, chapter -> AVTimedMetadataGroup? in
-            let end = min(index + 1 < chapters.count ? chapters[index + 1].start : duration, duration)
-            guard chapter.start < end else { return nil }
-            let title = AVMutableMetadataItem()
-            title.identifier = .commonIdentifierTitle
-            title.value = chapter.title as NSString
-            title.extendedLanguageTag = "und"
-            var items: [AVMetadataItem] = [title]
-            if let data = chapter.thumbnail.flatMap({ artwork[$0] }) {
-                let image = AVMutableMetadataItem()
-                image.identifier = .commonIdentifierArtwork
-                image.value = data as NSData
-                image.dataType = kCMMetadataBaseDataType_JPEG as String
-                image.extendedLanguageTag = "und"
-                items.append(image)
+    #if os(tvOS)
+        /// Sets the item's content proposal; the player presents it when the video ends.
+        private func propose(_ next: VideoSummary, on item: AVPlayerItem) async {
+            var preview: UIImage?
+            if let url = next.thumbnail {
+                preview = await RemoteImageLoader.shared.image(for: .init(url: url, pixelWidth: 960, pixelHeight: 540))
             }
-            let range = CMTimeRange(start: CMTime(seconds: chapter.start, preferredTimescale: 600), end: CMTime(seconds: end, preferredTimescale: 600))
-            return AVTimedMetadataGroup(items: items, timeRange: range)
+            guard !Task.isCancelled else { return }
+            let proposal = AVContentProposal(contentTimeForTransition: .indefinite, title: next.title, previewImage: preview)
+            proposal.automaticAcceptanceInterval = Self.upNextCountdown
+            item.nextContentProposal = proposal
+            upNext = next
         }
-        return [AVNavigationMarkersGroup(title: nil, timedNavigationMarkers: markers)]
-    }
+
+        /// One chapter marker per chapter, each lasting until the next one (the last until the end).
+        private static func markerGroups(_ chapters: [Chapter], duration: Double, artwork: [URL: Data]) -> [AVNavigationMarkersGroup] {
+            let markers = chapters.enumerated().compactMap { index, chapter -> AVTimedMetadataGroup? in
+                let end = min(index + 1 < chapters.count ? chapters[index + 1].start : duration, duration)
+                guard chapter.start < end else { return nil }
+                let title = AVMutableMetadataItem()
+                title.identifier = .commonIdentifierTitle
+                title.value = chapter.title as NSString
+                title.extendedLanguageTag = "und"
+                var items: [AVMetadataItem] = [title]
+                if let data = chapter.thumbnail.flatMap({ artwork[$0] }) {
+                    let image = AVMutableMetadataItem()
+                    image.identifier = .commonIdentifierArtwork
+                    image.value = data as NSData
+                    image.dataType = kCMMetadataBaseDataType_JPEG as String
+                    image.extendedLanguageTag = "und"
+                    items.append(image)
+                }
+                let range = CMTimeRange(start: CMTime(seconds: chapter.start, preferredTimescale: 600), end: CMTime(seconds: end, preferredTimescale: 600))
+                return AVTimedMetadataGroup(items: items, timeRange: range)
+            }
+            return [AVNavigationMarkersGroup(title: nil, timedNavigationMarkers: markers)]
+        }
+    #endif
 
     /// Saves the position, or marks the video watched at its end. The history skips live streams
     /// (indefinite duration).

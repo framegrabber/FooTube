@@ -2,6 +2,7 @@ name: FooTube
 options:
   deploymentTarget:
     tvOS: "18.0"
+    iOS: "18.0"
   createIntermediateGroups: true
 # Team and bundle ID prefix: Config/Signing.xcconfig (+ your Config/Signing.local.xcconfig).
 configFiles:
@@ -17,11 +18,19 @@ packages:
   FooTubeCore:
     path: Packages/FooTubeCore
 targets:
+  # One app for Apple TV, iPhone and iPad: shared code in App/, platform screens in App/tvOS and App/iOS.
   FooTube:
     type: application
-    platform: tvOS
+    supportedDestinations: [tvOS, iOS]
     sources:
-      - App
+      - path: App
+        excludes:
+          - "tvOS/**"
+          - "iOS/**"
+      - path: App/tvOS
+        destinationFilters: [tvOS]
+      - path: App/iOS
+        destinationFilters: [iOS]
     dependencies:
       - package: FooTubeCore
     settings:
@@ -31,7 +40,14 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: FooTube
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
-        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
+        TARGETED_DEVICE_FAMILY: "1,2,3"
+        "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletv*]": "App Icon & Top Shelf Image"
+        "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphone*]": AppIcon
+        "INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphone*]": YES
+        "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphone*]": YES
+        "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphone*]": YES
+        "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone[sdk=iphone*]": "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad[sdk=iphone*]": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     scheme:
       testTargets:
         - FooTubeUITests

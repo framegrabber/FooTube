@@ -97,3 +97,14 @@ Not verified here: the Apple TV HD (owner), background sync inside the backgroun
 ### 2026-10-27 — I3 browser inbox folding in the `Apple TV` Simulator against `wrangler dev`
 
 `POST /v1/inbox` with the dev inbox token (`{"videoID":"eRsGyueVLvQ","title":"Sintel (bookmarked in a browser)"}`) → `201`; app brought to the foreground → log: `GET inbox: HTTP 200`, `PUT watchLater: HTTP 200` (3 entries), `DELETE inbox: HTTP 204`, "1 inbox items, 1 new"; the Worker's inbox is empty afterwards and Watch Later shows "Sintel (bookmarked in a browser)" first, with the `i.ytimg.com` thumbnail and no channel/duration yet (filled in by the catalog when played).
+
+## Phase 12: iPhone/iPad
+
+Simulators: `Apple TV` (tvOS 26.2), `iPhone 17` and `iPad Pro 11-inch (M5)` (iOS 26.3.1 runtime, system language German, so screenshots show the German strings). Screenshots in `/tmp/footube-ios-shots` (not committed).
+
+### 2026-10-27 — P1 multiplatform target
+
+- `scripts/check.sh task`: both app builds (`platform=tvOS Simulator,name=Apple TV`, `generic/platform=iOS Simulator`) succeed with warnings as errors; 238 Core tests pass.
+- tvOS UI tests on `Apple TV`: 9 tests, 0 failures (264 s; `/tmp/ui-p1.xcresult`).
+- iPhone 17 Simulator: launches to the tab bar (`p1-iphone-launch.png`; iOS 26 shows the Search tab as a separate button at the trailing end).
+- `navigationMarkerGroups`, `nextContentProposal`, `contextualActions` and `customInfoViewControllers` are tvOS-only in the iOS 26.2 SDK headers (`AVPlayerItem+AVKitAdditions.h` has no `navigationMarkerGroups` for iOS; `AVPlayerViewController.h` marks the others `API_UNAVAILABLE(ios)`), so Up next and the chapter markers sit behind `#if os(tvOS)` in `PlayerSession`, and iOS gets its own chapter list and Skip button (P3).

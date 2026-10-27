@@ -23,7 +23,7 @@ Checked by `node scripts/floor-guard.mjs` on the diff against `main` (or `origin
 | Secrets | Zero findings in our sources, redacted output (`.gitleaks.toml` excludes only build outputs and SwiftPM checkouts) | `gitleaks dir --redact --no-banner .` | every edit (fast), task end |
 | Warnings: core | Zero compiler warnings in our targets (Swift 6 language mode, warnings are errors via `Package.swift` settings) | `swift build --package-path Packages/FooTubeCore` | task end |
 | Tests: core | All offline tests pass | `swift test --package-path Packages/FooTubeCore` | task end |
-| Warnings: app | Zero compiler warnings in the app target (`SWIFT_TREAT_WARNINGS_AS_ERRORS: YES`, `SWIFT_VERSION: 6`) | `xcodebuild … -destination 'platform=tvOS Simulator,name=Apple TV' build` | task end |
+| Warnings: app | Zero compiler warnings in the app target on both platforms, tvOS and iOS (`SWIFT_TREAT_WARNINGS_AS_ERRORS: YES`, `SWIFT_VERSION: 6`) | `xcodebuild … -destination 'platform=tvOS Simulator,name=Apple TV' build` and `xcodebuild … -destination 'generic/platform=iOS Simulator' build` | task end |
 | Dependencies | No known vulnerability at severity high or above | `osv-scanner scan source -r .` on `Package.resolved` | task end |
 
 Why these numbers: zero is the only stable value for warnings, format and secrets (a non-zero budget gets spent). "High or above" for dependencies because lower findings are mostly noise for a private, single-user app; FFmpeg builds (if MPVKit is added) routinely carry unfixable low/medium findings.

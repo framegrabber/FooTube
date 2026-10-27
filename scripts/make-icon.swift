@@ -1,7 +1,8 @@
-// Generates the tvOS app icon + top shelf asset catalog for FooTube.
+// Generates the app icons (tvOS app icon + top shelf, iPhone/iPad app icon) for FooTube.
 // Regenerate (deterministic, re-runnable): swift scripts/make-icon.swift
-// Writes App/Assets.xcassets/App Icon & Top Shelf Image.brandassets/** (PNGs + Contents.json) and
-// App/Assets.xcassets/AppArtwork.imageset, the icon flattened into one image for in-app use (Settings).
+// Writes App/Assets.xcassets/App Icon & Top Shelf Image.brandassets/** (PNGs + Contents.json),
+// App/Assets.xcassets/AppIcon.appiconset (iPhone/iPad) and App/Assets.xcassets/AppArtwork.imageset,
+// the tvOS icon flattened into one image for in-app use (Settings).
 
 import CoreGraphics
 import CoreText
@@ -13,6 +14,7 @@ let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     .appendingPathComponent("App/Assets.xcassets")
 let brand = root.appendingPathComponent("App Icon & Top Shelf Image.brandassets")
 let artworkSet = root.appendingPathComponent("AppArtwork.imageset")
+let iosIconSet = root.appendingPathComponent("AppIcon.appiconset")
 let info: [String: Any] = ["author": "xcode", "version": 1]
 
 func fail(_ message: String) -> Never {
@@ -134,6 +136,22 @@ func artwork(base: (Int, Int), scales: [Int]) {
     }
 }
 
+// MARK: - iPhone/iPad app icon
+
+/// One 1024×1024 opaque square; the system scales it and applies the mask.
+func iosIcon() {
+    let file = "icon-1024.png"
+    writeJSON([
+        "info": info,
+        "images": [["filename": file, "idiom": "universal", "platform": "ios", "size": "1024x1024"]],
+    ], to: iosIconSet)
+    let image = render(1024, 1024, opaque: true) { ctx, w, h in
+        background(ctx, w, h)
+        playGlyph(ctx, center: CGPoint(x: w / 2, y: h / 2), size: h * 0.42)
+    }
+    savePNG(image, iosIconSet.appendingPathComponent(file))
+}
+
 // MARK: - Top shelf
 
 func topShelf(name: String, base: (Int, Int)) {
@@ -160,6 +178,7 @@ func topShelf(name: String, base: (Int, Int)) {
 
 try? FileManager.default.removeItem(at: brand)
 try? FileManager.default.removeItem(at: artworkSet)
+try? FileManager.default.removeItem(at: iosIconSet)
 writeJSON(["info": info], to: root)
 writeJSON([
     "info": info,
@@ -175,4 +194,5 @@ iconStack(name: "App Icon - App Store", base: (1280, 768), scales: [1])
 topShelf(name: "Top Shelf Image", base: (1920, 720))
 topShelf(name: "Top Shelf Image Wide", base: (2320, 720))
 artwork(base: (400, 240), scales: [1, 2])
-print("Wrote \(brand.path) and \(artworkSet.path)")
+iosIcon()
+print("Wrote \(brand.path), \(iosIconSet.path) and \(artworkSet.path)")

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs the checks defined in CONSTRAINTS.md (the canonical source; this script mirrors it).
 #   scripts/check.sh fast   floor, format, secrets            (after edits, a few seconds)
-#   scripts/check.sh task   fast + core build/tests, app build, dependencies   (task end, ~90 s)
+#   scripts/check.sh task   fast + core build/tests, app build (tvOS and iOS), dependencies   (task end, ~2 min)
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 2
 
@@ -29,10 +29,9 @@ osv() {
   ! grep -Eiq '\b(HIGH|CRITICAL)\b' <<<"$out"
 }
 
+# One destination of the multiplatform app; `xcodegen generate` runs before the first.
 app_build() {
-  xcodegen generate --quiet &&
-    xcodebuild -project FooTube.xcodeproj -scheme FooTube \
-      -destination 'platform=tvOS Simulator,name=Apple TV' build | xcbeautify --quiet
+  xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$1" build | xcbeautify --quiet
 }
 
 run "floor"   node scripts/floor-guard.mjs
@@ -51,7 +50,9 @@ if [[ "$mode" == "task" ]]; then
     skip "core build/tests" "Packages/FooTubeCore not created yet"
   fi
   if [[ -f project.yml ]]; then
-    run "app build" app_build
+    run "xcodegen" xcodegen generate --quiet
+    run "app build tvOS" app_build 'platform=tvOS Simulator,name=Apple TV'
+    run "app build iOS" app_build 'generic/platform=iOS Simulator'
   else
     skip "app build" "project.yml not created yet"
   fi
