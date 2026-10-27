@@ -55,9 +55,12 @@ targets:
         - FooTubeUITests
   FooTubeUITests:
     type: bundle.ui-testing
-    platform: tvOS
+    supportedDestinations: [tvOS, iOS]
     sources:
-      - UITests
+      - path: UITests/tvOS
+        destinationFilters: [tvOS]
+      - path: UITests/iOS
+        destinationFilters: [iOS]
     dependencies:
       - target: FooTube
     settings:

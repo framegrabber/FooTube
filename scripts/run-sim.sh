@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
-# Build FooTube, install it on the "Apple TV" Simulator and launch it.
-#   scripts/run-sim.sh [extra launch args...]
+# Build FooTube, install it on a Simulator and launch it.
+#   scripts/run-sim.sh [--ios | --ipad] [extra launch args...]
+# Default: the "Apple TV" Simulator. --ios: "iPhone 17"; --ipad: "iPad Pro 11-inch (M5)";
+# FOOTUBE_SIM=<name> picks another Simulator of that platform.
 # Sync: with FOOTUBE_SYNC_URL and FOOTUBE_SYNC_TOKEN set (or in $FOOTUBE_SYNC_ENV, default
 # ~/.config/footube/sync.env) a configuration file goes into the app's container before launch; the
 # app keeps URL and token and deletes the file (scripts/sync-env.sh). `-syncReset YES` turns sync off.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-source scripts/sync-env.sh
 
-SIM="Apple TV"
-DEST="platform=tvOS Simulator,name=$SIM"
+case "${1:-}" in
+  --ios) SIM="${FOOTUBE_SIM:-iPhone 17}"; PLATFORM="iOS Simulator"; shift ;;
+  --ipad) SIM="${FOOTUBE_SIM:-iPad Pro 11-inch (M5)}"; PLATFORM="iOS Simulator"; shift ;;
+  *) SIM="${FOOTUBE_SIM:-Apple TV}"; PLATFORM="tvOS Simulator" ;;
+esac
+DEST="platform=$PLATFORM,name=$SIM"
+
+source scripts/sync-env.sh
 
 xcodegen generate --quiet
 xcodebuild -project FooTube.xcodeproj -scheme FooTube -destination "$DEST" build | xcbeautify --quiet

@@ -1,10 +1,10 @@
 # FooTube
 
-A native, ad-free YouTube client for Apple TV that you build and install yourself.
+A native, ad-free YouTube client for Apple TV, iPhone and iPad that you build and install yourself.
 
-FooTube resolves YouTube streams on the Apple TV itself and plays them in Apple's own video player. There is no web player, so there are no ads, and there's no Google account and no tracking. Subscriptions, history and Watch Later live on your Apple TV; if you like, they sync between your Apple TVs through a small server you run yourself ([Sync](#sync-optional)).
+FooTube resolves YouTube streams on the device itself and plays them in Apple's own video player. There is no web player, so there are no ads, and there's no Google account and no tracking. Subscriptions, history and Watch Later live on your devices; if you like, they sync between your Apple TVs, iPhones and iPads through a small server you run yourself ([Sync](#sync-optional)).
 
-It was built for the **Apple TV HD (4th generation, A8)**, which can only decode H.264 up to 1080p. Streams are capped to that, so it runs on every Apple TV with tvOS 18 or later.
+It was built for the **Apple TV HD (4th generation, A8)**, which can only decode H.264 up to 1080p. Streams are capped to that, so it runs on every Apple TV with tvOS 18 or later and every iPhone and iPad with iOS 18 or later.
 
 ![Subscriptions feed with channel sidebar](docs/screenshots/subscriptions.jpg)
 
@@ -26,8 +26,9 @@ It was built for the **Apple TV HD (4th generation, A8)**, which can only decode
 - **Resume** where you left off, plus **History** and **Watch Later** tabs (long-press a video for the menu).
 - **Sync (optional)**: subscriptions, Watch Later, History with resume positions and SponsorBlock settings stay the same on every Apple TV of the household, through your own server on Cloudflare's free plan.
 - **Settings**: SponsorBlock behavior per category, sync status, clearing History and Watch Later, version, when a sideloaded install expires, and credits.
-- Interface in English and German; titles and dates in your Apple TV's language.
+- Interface in English and German; titles and dates in your device's language.
 - Follows Apple's tvOS design: native lockups with lift and tilt, light and dark mode.
+- **iPhone and iPad** (iOS 18+): the same app with touch screens (tab bar on iPhone, sidebar on iPad), Picture in Picture and AirPlay, a Chapters list in the player, a Skip button for SponsorBlock segments, and pasting the sync configuration in Settings. No Up next on iOS: a video simply ends.
 
 ## Install on your own Apple TV
 
@@ -82,23 +83,42 @@ Prefer Xcode? Run `xcodegen generate && open FooTube.xcodeproj`, choose your App
 
 With the paid program ($99/year), installs last a year.
 
+## Install on your iPhone or iPad
+
+Same Mac, tools and signing file as for the Apple TV (steps 1 and 2 above); the same bundle ID covers both.
+
+1. Connect the iPhone or iPad to the Mac with a cable once and trust the Mac. In Xcode, **Window → Devices and Simulators** shows it; after that it can also install over the network.
+2. On the device, turn on **Settings → Privacy & Security → Developer Mode** (it appears after the device has been connected to Xcode) and restart when asked.
+3. Build, install and launch:
+
+   ```sh
+   scripts/run-ios-device.sh
+   ```
+
+   The script picks the first paired iPhone or iPad; `FOOTUBE_DEVICE="<name or identifier>"` chooses another.
+4. The first launch fails until you trust your developer profile: **Settings → General → VPN & Device Management** → your Apple ID → **Trust**. Then launch FooTube from the home screen.
+
+The same limits apply as on the Apple TV: a free Apple ID's install stops launching after 7 days (run the script again; your data stays) and counts as one of the 3 sideloaded apps on that device. Sync can be set up by the script (as for the Apple TV) or by pasting URL and token in the app's Settings.
+
 ## Try it in the Simulator
 
 No Apple ID or team is needed:
 
 ```sh
-scripts/run-sim.sh
+scripts/run-sim.sh          # "Apple TV"
+scripts/run-sim.sh --ios    # "iPhone 17"
+scripts/run-sim.sh --ipad   # "iPad Pro 11-inch (M5)"
 ```
 
-The script uses the "Apple TV" simulator. The Simulator decodes video with your Mac's hardware, so it says nothing about playback performance on a real Apple TV HD.
+`FOOTUBE_SIM="<name>"` picks another Simulator of that platform. The Simulator decodes video with your Mac's hardware, so it says nothing about playback performance on a real Apple TV HD. The iPhone Simulator doesn't offer Picture in Picture; the iPad Simulator does.
 
-Debug launch arguments (Simulator or `run-device.sh`): `-play <video ID or URL>`, `-search <query>`, `-channel <channel ID>`, `-subscribe <channel ID,channel ID>`.
+Debug launch arguments (Simulator or `run-device.sh`/`run-ios-device.sh`, after the `--ios`/`--ipad` flag): `-play <video ID or URL>`, `-search <query>`, `-channel <channel ID>`, `-subscribe <channel ID,channel ID>`.
 
 ## Sync (optional)
 
-Subscriptions, Watch Later, History (with resume positions) and SponsorBlock settings can be the same on every Apple TV of your household. They go only to a small server you deploy yourself on Cloudflare's free plan, from the FooTubeSyncBackend repository: its README covers deploying it and creating the token. Without it, FooTube sends nothing anywhere new.
+Subscriptions, Watch Later, History (with resume positions) and SponsorBlock settings can be the same on every Apple TV, iPhone and iPad of your household. They go only to a small server you deploy yourself on Cloudflare's free plan, from the FooTubeSyncBackend repository: its README covers deploying it and creating the token. Without it, FooTube sends nothing anywhere new.
 
-Connect each Apple TV once:
+Connect each Apple TV once (iPhone/iPad: the same with `scripts/run-ios-device.sh`):
 
 ```sh
 FOOTUBE_SYNC_URL=https://footube-sync.<subdomain>.workers.dev FOOTUBE_SYNC_TOKEN=<token> scripts/run-device.sh
@@ -106,7 +126,7 @@ FOOTUBE_SYNC_URL=https://footube-sync.<subdomain>.workers.dev FOOTUBE_SYNC_TOKEN
 
 Or put both variables in `~/.config/footube/sync.env` (shell syntax; another file via `FOOTUBE_SYNC_ENV`), which `run-device.sh` and `run-sim.sh` read on every run. The script copies them as a small file into the installed app's container; at launch the app keeps the URL, stores the token in its Keychain and deletes the file. The token never goes into the repository, the app bundle, the build settings or the launch command. Later runs without the variables keep the configuration; `scripts/run-device.sh -syncReset YES` turns sync off (local data stays).
 
-FooTube syncs when it opens, every 5 minutes while it's open, a few seconds after a change, when the player closes and when it goes to the background. **Settings → Sync** shows the state ("Synced 2 minutes ago", "Offline, will retry", "Token rejected") and offers **Sync Now**; a missing network never blocks browsing or playback. A removal (unsubscribe, Watch Later) isn't undone by another Apple TV, even one that was off for months.
+FooTube syncs when it opens, every 5 minutes while it's open, a few seconds after a change, when the player closes and when it goes to the background. **Settings → Sync** shows the state ("Synced 2 minutes ago", "Offline, will retry", "Token rejected") and offers **Sync Now**; a missing network never blocks browsing or playback. A removal (unsubscribe, Watch Later) isn't undone by another device, even one that was off for months.
 
 **On iPhone and iPad** you can also connect in the app: **Settings → Server**, paste the Worker's URL and the **sync token** (not the inbox token), tap **Connect**. FooTube checks both with the Worker before saving them; a wrong token is rejected with a message, and once saved the token stays in the Keychain and isn't shown again. **Change Server…** and **Turn Off Sync** are below.
 
@@ -144,10 +164,11 @@ curl -X POST https://footube-sync.<subdomain>.workers.dev/v1/inbox \
 
 ## Using it
 
-- **Tabs:** Subscriptions, Search, Watch Later, History, Settings.
-- **Long press** a video: open its channel, add to or remove from Watch Later.
-- **Menu button:** goes back one level; on a tab's main screen it moves to the tab bar; on the tab bar it leaves the app (tvOS convention). Going up to the tab bar and back down returns a tab to its main screen.
-- **Appearance** follows the Apple TV setting: Settings → General → Appearance.
+- **Tabs:** Subscriptions, Search, Watch Later, History, Settings (on iPad, the tab bar can turn into a sidebar).
+- **Long press** a video: open its channel, add to or remove from Watch Later. On iPhone and iPad, swipe left in Watch Later and History to remove a video, and pull down to refresh.
+- **Menu button** (Apple TV): goes back one level; on a tab's main screen it moves to the tab bar; on the tab bar it leaves the app (tvOS convention). Going up to the tab bar and back down returns a tab to its main screen.
+- **Player on iPhone and iPad:** the system player full screen; **Chapters** opens the chapter list, a **Skip** button appears for SponsorBlock segments set to "Show Skip Button", Picture in Picture starts from its button or when you leave the app while a video plays, AirPlay from its button. Close the player with ✕ or a swipe down.
+- **Appearance** follows the device setting (Apple TV: Settings → General → Appearance).
 
 ## How it works
 
@@ -163,7 +184,7 @@ flowchart LR
 
 - **Streams:** [YouTubeKit](https://github.com/alexeichhorn/YouTubeKit) gets the HLS master playlist. FooTube rewrites it to keep only H.264 ≤ 1080p video and the original audio track, then hands it to `AVPlayer`.
 - **Catalog:** search, channel uploads, chapters, related videos and suggestions use YouTube's internal InnerTube API through a vendored, renamed copy of [b5i/YouTubeKit](https://github.com/b5i/YouTubeKit) (`Packages/InnerTubeKit`; changes are listed in its `VENDORED.md`).
-- **State:** subscriptions, feed cache, history, Watch Later and settings are stored in `UserDefaults` on the device; tvOS may delete files, but not these. With sync on, subscriptions, Watch Later, history and SponsorBlock settings are also merged with your sync Worker's copy (one JSON document each; removals are kept as markers for 90 days so other Apple TVs don't bring them back).
+- **State:** subscriptions, feed cache, history, Watch Later and settings are stored in `UserDefaults` on the device; tvOS may delete files, but not these. With sync on, subscriptions, Watch Later, history and SponsorBlock settings are also merged with your sync Worker's copy (one JSON document each; removals are kept as markers for 90 days so other devices don't bring them back).
 
 Background on why it's built this way: [docs/research.md](docs/research.md).
 
@@ -174,7 +195,8 @@ Background on why it's built this way: [docs/research.md](docs/research.md).
 | All checks (format, secrets, build with warnings as errors, tests, dependency scan) | `scripts/check.sh task` |
 | Core unit tests | `swift test --package-path Packages/FooTubeCore` |
 | Tests against real YouTube | `FOOTUBE_NETWORK_TESTS=1 swift test --package-path Packages/FooTubeCore` |
-| Remote-driven UI tests | `xcodebuild test -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS Simulator,name=Apple TV'` |
+| Remote-driven UI tests (Apple TV) | `xcodebuild test -project FooTube.xcodeproj -scheme FooTube -destination 'platform=tvOS Simulator,name=Apple TV'` |
+| Touch UI test (iPhone; iPad likewise) | `xcodebuild test -project FooTube.xcodeproj -scheme FooTube -destination 'platform=iOS Simulator,name=iPhone 17'` |
 
 `scripts/check.sh` additionally needs `swiftformat`, `gitleaks`, `osv-scanner` and Node.js. The project was built with AI coding agents: [SPEC.md](SPEC.md) describes what it does, [CONSTRAINTS.md](CONSTRAINTS.md) the rules every change has to pass, [AGENTS.md](AGENTS.md) the working guide, and `tasks/` the plan and test results.
 

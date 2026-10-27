@@ -19,6 +19,7 @@ struct PlayerView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
         controller.player = session.player
+        controller.view.accessibilityIdentifier = "player" // UI tests
         controller.delegate = context.coordinator
         context.coordinator.observe(controller)
         context.coordinator.trackOffer(in: controller)

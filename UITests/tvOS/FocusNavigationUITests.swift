@@ -240,4 +240,23 @@ final class FocusNavigationUITests: XCTestCase {
         attachScreenshot("watch later")
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", title)).firstMatch.exists, "video not in Watch Later")
     }
+
+    /// The basic play path: search, play a result, Menu closes the player, the results are still there.
+    func testSearchPlayAndBack() {
+        let app = launch(["-search", "blender open movie"])
+        XCTAssertTrue(app.buttons.matching(videoCard).firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(move(.down, until: videoCard, in: app), "no result focused: \(focused(app).label)")
+        let title = focused(app).label
+        press(.select)
+        let player = app.otherElements["player"]
+        XCTAssertTrue(player.waitForExistence(timeout: 30), "player did not open")
+        usleep(5_000_000) // playing for a few seconds
+        attachScreenshot("playing")
+        for _ in 0 ..< 3 where player.exists { // a first Menu may only hide the transport bar
+            press(.menu)
+            usleep(1_000_000)
+        }
+        XCTAssertFalse(player.exists, "player did not close")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", title)).firstMatch.exists, "results gone after closing the player")
+    }
 }

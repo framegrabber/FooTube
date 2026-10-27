@@ -162,3 +162,21 @@ Temporary XCUITest plus `-play` launches, English UI; log via `log stream --leve
 | `footube://play?v=dQw4w9WgXcQ` | Player opens and plays (`link-play`) |
 | `footube://nonsense?v=xyz` | Banner "FooTube can't open this link." (`link-invalid`) |
 | Real Shortcut, Safari bookmark on iOS | Not run (needs a real iPhone; owner) |
+
+### 2026-10-27 — P6 scripts, UI tests, iPhone ↔ Apple TV sync
+
+- `scripts/run-sim.sh --ios -subscribe …` with `FOOTUBE_SYNC_ENV` pointing at `wrangler dev`: builds, installs on `iPhone 17`, the app takes the dropped configuration (Settings: Server 127.0.0.1, "Synced 1 minute ago", `p2-iphone-settings-2.png`; on the TV the log line `Sync configured from file for 127.0.0.1`), subscribes and shows the feed (`p2-iphone-subscriptions.png`). `scripts/run-sim.sh --ipad -search "blender open movie"` builds, installs and launches on `iPad Pro 11-inch (M5)` with the search results (`p6-ipad-run-sim.png`). `run-ios-device.sh` not run (no paired iPhone/iPad).
+- iOS UI test `PlaybackUITests.testSearchPlayAndBack` (search → play → ✕ → results still there): passes on `iPhone 17` (17.6 s, final tree, `/tmp/ui-ios-final.xcresult`) and on `iPad Pro 11-inch (M5)` (19 s).
+- tvOS UI tests on `Apple TV`: 10 tests (9 existing + `testSearchPlayAndBack`), 0 failures (306 s; `/tmp/ui-tv-final.xcresult`).
+- Sync check, `iPhone 17` ↔ `Apple TV` against the same `wrangler dev` (screenshots `p6-*.png`, logs `iphone.log`, `appletv.log`):
+
+| Direction | Data | Result |
+|---|---|---|
+| iPhone → TV | Subscriptions (Blender, Rick Astley, Alexandre Chappel) | TV `subscriptions attempt 1: 5 entries` (merged with its own), sidebar lists them (`p6-appletv-tv-subscriptions.png`) |
+| iPhone → TV | Watch Later (inbox item, `footube://` links) | TV Watch Later shows "Inbox test from curl", "Big Buck Bunny", `jNQXAC9IVRw` (`p6-appletv-tv-watch-later.png`) |
+| iPhone → TV | Resume position (`zergV5YUDjk` closed on the iPhone at ~2:05) | TV `-play zergV5YUDjk`: `resuming at 125.0 s` |
+| TV → iPhone | Subscription (`-subscribe` Blender Guru on the TV) | TV pushes 6 entries; iPhone `subscriptions attempt 1: 6 entries, local changed`, Blender Guru in the avatar row (`p6-iphone-subscriptions-after-tv.png`) |
+| TV → iPhone | Resume position (`4haAdmHqGOw`: TV resumed the iPhone's 409 s, played 25 s, closed with Menu) | iPhone `-play 4haAdmHqGOw`: `resuming at 435.38 s` (`p6-iphone-resume-from-tv.png`) |
+
+- SPEC-ios-app success criteria: 1 (both builds, zero warnings, `check.sh task`) ✓; 2 (feed, search with suggestions, channel with Subscribe, play with resume, chapters, Watch Later long press add/remove, History, Settings with sync status on iPhone and iPad; PiP starts on the iPad Simulator, the iPhone Simulator has no PiP) ✓; 3 ✓; 4 ✓; 5 ✓.
+- Not verified here (owner, on hardware): install with `run-ios-device.sh`, PiP and AirPlay on a real iPhone, the "Add to FooTube" Shortcut and the bookmark in iOS Safari.
