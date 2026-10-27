@@ -42,4 +42,13 @@ if [[ -n "$sync_file" ]]; then
   xcrun devicectl device copy to --device "$DEVICE" --domain-type appDataContainer --domain-identifier "$BUNDLE" \
     --source "$sync_file" --destination "$sync_destination" --quiet
 fi
-xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE" "$@"
+if ! xcrun devicectl device process launch --device "$DEVICE" --terminate-existing "$BUNDLE" "$@"; then
+  cat >&2 <<'EOF'
+
+FooTube is installed but iOS refused to launch it. After the first install (and after switching
+Apple IDs), trust your developer profile on the device: Settings → General → VPN & Device Management
+→ your Apple ID under "Developer App" → Trust. Then open FooTube from the home screen or run this
+script again.
+EOF
+  exit 1
+fi
