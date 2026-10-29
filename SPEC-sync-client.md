@@ -49,7 +49,7 @@ Pure functions in FooTubeCore: `merge(local, remote, lastSyncAt, now) -> merged`
 
 ## Configuration
 - A configuration file `Library/Caches/footube-sync.json` (`{"url": …, "token": …}`) in the app's data container: at launch the app reads it, deletes it whether valid or not (logging only the error message), and saves the URL in `UserDefaults` and the token in the Keychain (generic password, this app only, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`: readable by background syncs, never in a backup or restored to another device; an item saved by an older build with `…AfterFirstUnlock` is moved on the first load). `-syncReset YES` (launch argument, no secret) removes both and the sync state, keeping local data.
-- `scripts/run-sim.sh` and `scripts/run-device.sh` write that file (mode 600, deleted when the script exits) when `FOOTUBE_SYNC_URL` and `FOOTUBE_SYNC_TOKEN` are set, or read them from the file `$FOOTUBE_SYNC_ENV` (default `~/.config/footube/sync.env`) when it exists, and copy it into the installed app's container before launch (`simctl get_app_container … data` / `devicectl device copy to --domain-type appDataContainer`). The token never enters the repository, the app bundle, the build settings or a launch command.
+- `scripts/run-sim.sh`, `scripts/run-device.sh` and `scripts/run-ios-device.sh` write that file (mode 600, deleted when the script exits) when `FOOTUBE_SYNC_URL` and `FOOTUBE_SYNC_TOKEN` are set, or read them from the file `$FOOTUBE_SYNC_ENV` (default `~/.config/footube/sync.env`, the recommended way) when it exists, and copy it into the installed app's container before launch (`simctl get_app_container … data` / `devicectl device copy to --domain-type appDataContainer`). The token never enters the repository, the app bundle, the build settings or a launch command. The env file is data, not shell code (2026-10-29, security review): only `FOOTUBE_SYNC_URL=`/`FOOTUBE_SYNC_TOKEN=` lines count (optional `export `, optional quotes, nothing expanded), and a file not owned by the user or writable by group/others is refused. When iOS refuses to launch the app, `run-ios-device.sh` says that the copied file waits in the container until FooTube opens.
 - The URL must be `https`, except `http://localhost` / `http://127.0.0.1` (Simulator against `wrangler dev`).
 
 ## Settings
@@ -63,8 +63,8 @@ Existing commands, plus:
 ```
 Local Worker:     (in ../FooTubeSyncBackend) npm run dev               → http://localhost:8787, token from its .dev.vars
 Sync network test: FOOTUBE_SYNC_TEST_URL=http://localhost:8787 FOOTUBE_SYNC_TEST_TOKEN=<dev token> swift test --package-path Packages/FooTubeCore --filter SyncNetworkTests   (localhost only)
-Simulator w/ sync: FOOTUBE_SYNC_URL=… FOOTUBE_SYNC_TOKEN=… scripts/run-sim.sh
-Device w/ sync:    FOOTUBE_SYNC_URL=… FOOTUBE_SYNC_TOKEN=… scripts/run-device.sh   (or ~/.config/footube/sync.env)
+Simulator w/ sync: scripts/run-sim.sh   (URL and token in ~/.config/footube/sync.env; inline FOOTUBE_SYNC_URL=… FOOTUBE_SYNC_TOKEN=… only for the wrangler dev token)
+Device w/ sync:    scripts/run-device.sh   (same file)
 ```
 The sync network test writes to the Worker's stores: run it only against `wrangler dev`, never against the household's Worker.
 

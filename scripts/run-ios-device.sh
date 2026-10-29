@@ -50,5 +50,11 @@ Apple IDs), trust your developer profile on the device: Settings → General →
 → your Apple ID under "Developer App" → Trust. Then open FooTube from the home screen or run this
 script again.
 EOF
+  if [[ -n "$sync_file" ]]; then
+    cat >&2 <<EOF
+The sync configuration file (with the token) is already in FooTube's container on the device
+($sync_destination) and stays there until FooTube opens, reads and deletes it.
+EOF
+  fi
   exit 1
 fi

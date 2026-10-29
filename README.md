@@ -118,19 +118,26 @@ Debug launch arguments (Simulator or `run-device.sh`/`run-ios-device.sh`, after 
 
 Subscriptions, Watch Later, History (with resume positions) and SponsorBlock settings can be the same on every Apple TV, iPhone and iPad of your household. They go only to a small server you deploy yourself on Cloudflare's free plan, from the FooTubeSyncBackend repository: its README covers deploying it and creating the token. Without it, FooTube sends nothing anywhere new.
 
-Connect each Apple TV once (iPhone/iPad: the same with `scripts/run-ios-device.sh`):
+Connect each Apple TV once (iPhone/iPad: the same with `scripts/run-ios-device.sh`). Put the Worker's URL and the sync token in `~/.config/footube/sync.env`, readable only by you:
 
 ```sh
-FOOTUBE_SYNC_URL=https://footube-sync.<subdomain>.workers.dev FOOTUBE_SYNC_TOKEN=<token> scripts/run-device.sh
+mkdir -p ~/.config/footube
+touch ~/.config/footube/sync.env && chmod 600 ~/.config/footube/sync.env
+open -e ~/.config/footube/sync.env   # add the two lines below, then save
 ```
 
-Or put both variables in `~/.config/footube/sync.env` (shell syntax; another file via `FOOTUBE_SYNC_ENV`), which `run-device.sh` and `run-sim.sh` read on every run. The script copies them as a small file into the installed app's container; at launch the app keeps the URL, stores the token in its Keychain and deletes the file. The token never goes into the repository, the app bundle, the build settings or the launch command. Later runs without the variables keep the configuration; `scripts/run-device.sh -syncReset YES` turns sync off (local data stays).
+```
+FOOTUBE_SYNC_URL=https://footube-sync.<subdomain>.workers.dev
+FOOTUBE_SYNC_TOKEN=<token>
+```
+
+Then run `scripts/run-device.sh` (or `run-sim.sh`, `run-ios-device.sh`); they read the file on every run (another file via `FOOTUBE_SYNC_ENV`). The file is read as data, not run as shell code: only those two lines count (values optionally in quotes, nothing expanded), and the scripts refuse a file that isn't yours or that group or others can write to. Typing the token on the command line instead would leave it in your shell history and in the environment of every tool the script runs. The script copies URL and token as a small file into the installed app's container; at launch the app keeps the URL, stores the token in its Keychain (on this device only, not in backups) and deletes the file. The token never goes into the repository, the app bundle, the build settings or the launch command. If the device refuses to launch FooTube, that file waits in the app's container until FooTube opens. Later runs without the file keep the configuration; `scripts/run-device.sh -syncReset YES` turns sync off (local data stays).
 
 FooTube syncs when it opens, every 5 minutes while it's open, a few seconds after a change, when the player closes and when it goes to the background. **Settings → Sync** shows the state ("Synced 2 minutes ago", "Offline, will retry", "Token rejected") and offers **Sync Now**; a missing network never blocks browsing or playback. A removal (unsubscribe, Watch Later) isn't undone by another device, even one that was off for months.
 
 **On iPhone and iPad** you can also connect in the app: **Settings → Server**, paste the Worker's URL and the **sync token** (not the inbox token), tap **Connect**. FooTube checks both with the Worker before saving them; a wrong token is rejected with a message, and once saved the token stays in the Keychain and isn't shown again. **Change Server…** and **Turn Off Sync** are below.
 
-For development against a local Worker: `npm run dev` in FooTubeSyncBackend, then `FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<token from its .dev.vars> scripts/run-sim.sh`.
+For development against a local Worker: `npm run dev` in FooTubeSyncBackend, then `FOOTUBE_SYNC_URL=http://localhost:8787 FOOTUBE_SYNC_TOKEN=<token from its .dev.vars> scripts/run-sim.sh` (a throwaway local token, so passing it inline is fine; or a second file via `FOOTUBE_SYNC_ENV`).
 
 ### Adding videos from anywhere
 
