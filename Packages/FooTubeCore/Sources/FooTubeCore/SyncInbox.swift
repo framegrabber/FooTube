@@ -23,7 +23,8 @@ public enum SyncInbox {
     /// bookmarked. The entry's `addedAt` is the item's (orders the list); `changedAt` is `now`, the time
     /// of folding: with the item's `addedAt` the next merge would take the entry for one pruned
     /// elsewhere (changed before `lastSyncAt`, missing on the Worker) and drop it. Items with an invalid
-    /// video ID are skipped. Pure: the same inputs give the same document.
+    /// video ID are skipped. The result is bounded like every Watch Later (`SyncMerge.boundedWatchLater`).
+    /// Pure: the same inputs give the same document.
     public static func fold(_ items: [InboxItem], into document: WatchLaterDocument, now: Date) -> WatchLaterDocument {
         var document = document
         for item in items {
@@ -37,7 +38,7 @@ public enum SyncInbox {
             }
             document.entries.append(WatchLaterRecord(video: .bare(id, title: item.title), addedAt: addedAt, changedAt: now))
         }
-        document.entries.sort(by: WatchLaterRecord.listOrder)
+        document.entries = SyncMerge.boundedWatchLater(document.entries)
         return document
     }
 }

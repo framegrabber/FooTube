@@ -5,9 +5,12 @@ import os
 /// most recently added first, one entry per video.
 ///
 /// Kept in `UserDefaults` as a `WatchLaterDocument` like `WatchHistory`; unreadable data counts as
-/// empty. Removing leaves a removal marker that the readers hide, so another device's sync can't
-/// bring the video back.
+/// empty. Removing leaves a removal marker (only the video ID) that the readers hide, so another
+/// device's sync can't bring the video back. At most `capacity` videos: adding beyond drops the oldest
+/// added (`SyncMerge.boundedWatchLater`).
 public struct WatchLaterStore: SyncableStore {
+    /// Live entries kept, newest `addedAt` first; removal markers don't count.
+    public static let capacity = 1000
     private let defaults: UserDefaults
     private let now: @Sendable () -> Date
     private let key = "watchLater.v2"
@@ -32,7 +35,8 @@ public struct WatchLaterStore: SyncableStore {
         document().entries.contains { $0.video.id == id && $0.removedAt == nil }
     }
 
-    /// Adds the video at the front; an existing entry for the same ID moves to the front.
+    /// Adds the video at the front; an existing entry for the same ID moves to the front. Beyond
+    /// `capacity` the oldest added entry is dropped.
     public func add(_ video: VideoSummary) throws {
         var document = document()
         document.entries.removeAll { $0.video.id == video.id }
@@ -90,6 +94,6 @@ public struct WatchLaterStore: SyncableStore {
 
     private func save(_ document: WatchLaterDocument) throws(SyncDocumentError) {
         let entries = SyncMerge.withoutExpiredMarkers(document.entries, now: now())
-        try replace(WatchLaterDocument(entries: entries.sorted(by: WatchLaterRecord.listOrder)))
+        try replace(WatchLaterDocument(entries: SyncMerge.boundedWatchLater(entries)))
     }
 }

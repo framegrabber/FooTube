@@ -157,6 +157,51 @@ struct SyncMergeTests {
         #expect(merged.entries.map(\.changedAt) == [now])
     }
 
+    @Test func `watch later markers from older builds lose everything but the video ID`() throws {
+        let thumbnail = URL(string: "https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg")
+        let full = try VideoSummary(id: #require(VideoID("aaaaaaaaaaa")), title: String(repeating: "t", count: 5000), channel: ChannelRef(id: "UC1", name: "C"), duration: "1:00", viewCount: nil, published: nil, thumbnail: thumbnail)
+        let marker = WatchLaterRecord(video: full, addedAt: now - 20, changedAt: now - 10, removedAt: now - 10)
+        let live = WatchLaterRecord(video: full, addedAt: now - 30, changedAt: now - 30)
+        let merged = merge(WatchLaterDocument(entries: [live]), WatchLaterDocument(entries: [marker]), lastSyncAt: nil, now: now)
+        let bare = VideoSummary(id: full.id, title: "", channel: nil, duration: nil, viewCount: nil, published: nil, thumbnail: nil)
+        #expect(merged.entries == [WatchLaterRecord(video: bare, addedAt: now - 20, changedAt: now - 10, removedAt: now - 10)])
+        #expect(try SyncCoding.encode(merged) == SyncCoding.encode(merge(WatchLaterDocument(entries: [marker]), WatchLaterDocument(entries: [live]), lastSyncAt: nil, now: now)))
+        // Live entries keep their summary.
+        #expect(merge(WatchLaterDocument(entries: [live]), nil, lastSyncAt: nil, now: now).entries.first?.video == full)
+    }
+
+    @Test func `watch later keeps the 1,000 newest added live entries, the same on both sides`() throws {
+        func id(_ prefix: Character, _ index: Int) -> String {
+            "\(prefix)" + String(format: "%010d", index)
+        }
+        // Interleaved addedAt: local has the even seconds, remote the odd ones; one equal addedAt on
+        // both sides decided by video ID. Markers don't count against the limit and stay.
+        let local = WatchLaterDocument(entries: (0 ..< 600).map { later(id("a", $0), added: -Double(2 * $0)) }
+            + [later("zzzzzzzzzzz", added: -5000, removed: true)])
+        let remote = WatchLaterDocument(entries: (0 ..< 600).map { later(id("b", $0), added: -Double(2 * $0 + 1)) }
+            + [later(id("c", 0), added: -999)])
+        let merged = merge(local, remote, lastSyncAt: nil, now: now)
+        let live = merged.entries.filter { $0.removedAt == nil }
+        #expect(live.count == 1000)
+        #expect(live.first?.video.id.rawValue == id("a", 0))
+        // Seconds 0…998 are 999 entries; at -999 both "b0000000499" and "c0000000000" tie, the smaller ID wins.
+        #expect(live.last?.video.id.rawValue == id("b", 499))
+        #expect(!live.contains { $0.video.id.rawValue == id("c", 0) })
+        #expect(merged.entries.contains { $0.video.id.rawValue == "zzzzzzzzzzz" && $0.removedAt != nil })
+        #expect(try SyncCoding.encode(merged) == SyncCoding.encode(merge(remote, local, lastSyncAt: nil, now: now)))
+        #expect(try SyncCoding.encode(merge(merged, merged, lastSyncAt: now, now: now)) == SyncCoding.encode(merged))
+    }
+
+    @Test func `a full Watch Later of the longest inbox titles still fits the Worker's 1 MiB`() throws {
+        // 200 four-byte characters, the most an inbox title or footube:// link can carry.
+        let entries = (0 ..< WatchLaterStore.capacity).map { index in
+            let id = VideoID(String(format: "x%010d", index))!
+            return WatchLaterRecord(video: .bare(id, title: String(repeating: "🐰", count: 500)), addedAt: now - TimeInterval(index), changedAt: now)
+        }
+        let data = try SyncCoding.encode(merge(WatchLaterDocument(entries: entries), nil, lastSyncAt: nil, now: now))
+        #expect(data.count <= SyncClient.maxDocumentBytes)
+    }
+
     // MARK: History
 
     @Test func `history keeps the later update per video, ties going to the greater position`() {

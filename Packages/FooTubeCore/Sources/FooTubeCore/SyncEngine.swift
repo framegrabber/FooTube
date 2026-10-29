@@ -197,6 +197,8 @@ public final class SyncEngine {
                 logger.info("\(summary, privacy: .public), local \(changed ? "changed" : "unchanged"), Worker up to date")
                 return readAt
             }
+            // The Worker would answer 413; failing here keeps local data as it is and says why.
+            guard mergedData.count <= SyncClient.maxDocumentBytes else { throw .documentTooLarge(bytes: mergedData.count) }
             let precondition: SyncClient.Precondition = remote.map { .replace($0.etag) } ?? .create
             switch try await transport.put(name, data: mergedData, precondition: precondition) {
             case .stored:

@@ -172,4 +172,15 @@ struct SyncInboxTests {
         let folded = SyncInbox.fold(items, into: .empty, now: start + 2)
         #expect(folded.entries.map(\.video.title) == [String(repeating: "x", count: 200), "Big Buck Bunny"])
     }
+
+    @Test func `folding into a full Watch Later keeps the 1,000 newest added`() {
+        let entries = (0 ..< WatchLaterStore.capacity).map { index in
+            WatchLaterRecord(video: .bare(VideoID(String(format: "x%010d", index))!, title: nil), addedAt: start - TimeInterval(index), changedAt: start)
+        }
+        let items = [InboxItem(seq: 1, videoID: bunny, title: nil, addedAt: start + 1), InboxItem(seq: 2, videoID: fright, title: nil, addedAt: start + 2)]
+        let folded = SyncInbox.fold(items, into: WatchLaterDocument(entries: entries), now: start + 3)
+        #expect(folded.entries.count == 1000)
+        #expect(folded.entries.prefix(2).map(\.video.id.rawValue) == [fright, bunny])
+        #expect(folded.entries.last?.video.id.rawValue == "x0000000997")
+    }
 }

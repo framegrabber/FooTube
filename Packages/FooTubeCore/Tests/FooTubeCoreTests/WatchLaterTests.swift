@@ -68,4 +68,38 @@ struct WatchLaterTests {
         #expect(store.items().isEmpty)
         #expect(WatchLaterStore(defaults: defaults).items().isEmpty)
     }
+
+    @Test func `a removal keeps only the video ID, so the marker holds no title or thumbnail`() throws {
+        let defaults = freshDefaults()
+        let store = WatchLaterStore(defaults: defaults)
+        let thumbnail = URL(string: "https://i.ytimg.com/vi/\(first.rawValue)/hqdefault.jpg")
+        let full = VideoSummary(id: first, title: String(repeating: "t", count: 5000), channel: ChannelRef(id: "UC1", name: "C"), duration: "1:00", viewCount: "1", published: "1d", thumbnail: thumbnail)
+        try store.add(full)
+        try store.add(VideoSummary(id: second, title: "Second", channel: nil, duration: nil, viewCount: nil, published: nil, thumbnail: thumbnail))
+        try store.remove(first)
+        store.clear()
+        let markers = store.document().entries
+        #expect(markers.map(\.video) == [second, first].map { VideoSummary(id: $0, title: "", channel: nil, duration: nil, viewCount: nil, published: nil, thumbnail: nil) })
+        #expect(markers.allSatisfy { $0.removedAt != nil })
+    }
+
+    @Test func `adding beyond 1,000 videos drops the oldest added`() throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let store = WatchLaterStore(defaults: freshDefaults(), now: { start })
+        let ids = (0 ..< WatchLaterStore.capacity).map { VideoID(String(format: "v%010d", $0))! }
+        // Index 0 added first (oldest); a removal marker older than all of them doesn't count.
+        let records = ids.enumerated().map { index, id in
+            WatchLaterRecord(video: summary(id), addedAt: start - 2000 + TimeInterval(index), changedAt: start - 2000 + TimeInterval(index))
+        } + [WatchLaterRecord(video: summary(second), addedAt: start - 5000, changedAt: start - 5000, removedAt: start - 5000)]
+        try store.replace(WatchLaterDocument(entries: records))
+
+        try store.add(summary(first))
+        let items = store.items()
+        #expect(WatchLaterStore.capacity == 1000)
+        #expect(items.count == 1000)
+        #expect(items.first?.id == first)
+        #expect(!items.contains { $0.id == ids[0] })
+        #expect(items.last?.id == ids[1])
+        #expect(store.document().entries.contains { $0.video.id == second && $0.removedAt != nil })
+    }
 }

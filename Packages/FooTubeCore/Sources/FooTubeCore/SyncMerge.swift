@@ -76,6 +76,25 @@ public enum SyncMerge {
             video: winner.video ?? other.video,
         )
     }
+
+    /// Watch Later entries in list order (`WatchLaterRecord.listOrder`), markers `compacted`, live
+    /// entries beyond `WatchLaterStore.capacity` (the oldest `addedAt`; equal: the greater video ID)
+    /// dropped without a marker. Depends only on the set of entries, so both sides of a merge, local
+    /// adds and inbox folding all keep the same ones.
+    static func boundedWatchLater(_ entries: [WatchLaterRecord]) -> [WatchLaterRecord] {
+        var live = 0
+        var result: [WatchLaterRecord] = []
+        result.reserveCapacity(entries.count)
+        for record in entries.sorted(by: WatchLaterRecord.listOrder) {
+            if record.removedAt != nil {
+                result.append(record.compacted)
+            } else if live < WatchLaterStore.capacity {
+                live += 1
+                result.append(record)
+            }
+        }
+        return result
+    }
 }
 
 /// An entry that removal turns into a marker instead of deleting it.
@@ -126,7 +145,8 @@ public func merge(
     return SubscriptionsDocument(entries: entries.sorted { $0.id < $1.id })
 }
 
-/// Watch Later: union by `video.id`; see `SyncMerge.mergeMarked`. Entries ordered newest `addedAt`
+/// Watch Later: union by `video.id`; see `SyncMerge.mergeMarked`. Then `SyncMerge.boundedWatchLater`:
+/// markers reduced to the video ID, at most `WatchLaterStore.capacity` live entries, newest `addedAt`
 /// first.
 public func merge(
     _ local: WatchLaterDocument,
@@ -135,7 +155,7 @@ public func merge(
     now: Date,
 ) -> WatchLaterDocument {
     let entries = SyncMerge.mergeMarked(local.entries, remote?.entries, lastSyncAt: lastSyncAt, now: now)
-    return WatchLaterDocument(entries: entries.sorted(by: WatchLaterRecord.listOrder))
+    return WatchLaterDocument(entries: SyncMerge.boundedWatchLater(entries))
 }
 
 /// History: per video the later `updatedAt` wins (equal: the greater position), `watched` if either
@@ -197,6 +217,16 @@ extension WatchLaterRecord {
     /// Newest `addedAt` first, then by video ID.
     static func listOrder(_ first: WatchLaterRecord, _ second: WatchLaterRecord) -> Bool {
         first.addedAt != second.addedAt ? first.addedAt > second.addedAt : first.video.id.rawValue < second.video.id.rawValue
+    }
+
+    /// A removal marker keeps only what merging needs: the video ID, with an empty title and no
+    /// thumbnail or other details (markers written by earlier builds kept the whole summary for their
+    /// 90 days). Live entries are returned as they are.
+    var compacted: WatchLaterRecord {
+        guard removedAt != nil else { return self }
+        var record = self
+        record.video = VideoSummary(id: video.id, title: "", channel: nil, duration: nil, viewCount: nil, published: nil, thumbnail: nil)
+        return record
     }
 }
 

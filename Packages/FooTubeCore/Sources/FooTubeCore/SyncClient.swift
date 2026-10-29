@@ -21,6 +21,9 @@ public struct SyncClient: Sendable {
         case conflict(data: Data?, etag: String?)
     }
 
+    /// The Worker refuses documents larger than this (`413`).
+    public static let maxDocumentBytes = 1024 * 1024
+
     private let baseURL: URL
     private let token: String
     private let session: URLSession

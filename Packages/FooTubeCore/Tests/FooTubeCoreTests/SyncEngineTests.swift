@@ -566,4 +566,18 @@ struct SyncEngineTests {
         #expect(await living.engine.sync(.subscriptions) == .synced(start))
         #expect(await worker.preconditions == [.create, .replace(#"W/"1""#)])
     }
+
+    @Test func `a document over the Worker's 1 MiB is not sent and local data stays as it was`() async throws {
+        let worker = FakeWorker()
+        let living = Device(worker, clock: TestClock(start))
+        try living.subscriptions.subscribe(ChannelRef(id: blender.id, name: String(repeating: "B", count: SyncClient.maxDocumentBytes)), avatar: nil)
+        let before = living.subscriptions.document()
+        let size = try SyncCoding.encode(before).count
+
+        #expect(await living.engine.sync(.subscriptions) == .failed(.documentTooLarge(bytes: size)))
+        #expect(await worker.requests == ["GET subscriptions"])
+        #expect(living.subscriptions.document() == before)
+        #expect(living.engine.lastSyncAt(.subscriptions) == nil)
+        #expect(living.takeChanges().isEmpty)
+    }
 }

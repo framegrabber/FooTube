@@ -15,6 +15,9 @@ public enum SyncError: Error, Hashable, Sendable {
     /// The Worker's document can't be read (no `format`, wrong fields), or the local one can't be
     /// written; the round stops without overwriting anything on the Worker.
     case invalidDocument(detail: String)
+    /// The merged document is over `SyncClient.maxDocumentBytes`; the round stops before the `PUT`
+    /// (the Worker would refuse it with `413`) and local data stays as it was.
+    case documentTooLarge(bytes: Int)
 
     public var message: String {
         switch self {
@@ -24,6 +27,7 @@ public enum SyncError: Error, Hashable, Sendable {
         case let .unsupportedFormat(format): "Sync document has format \(format), newer than this build"
         case .conflictPersisted: "Sync kept conflicting with other devices"
         case let .invalidDocument(detail): "Sync document invalid: \(detail)"
+        case let .documentTooLarge(bytes): "Sync document is \(bytes) bytes, over the Worker's limit of \(SyncClient.maxDocumentBytes); not sent"
         }
     }
 }
