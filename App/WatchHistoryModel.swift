@@ -75,8 +75,7 @@ final class WatchHistoryModel {
                 onLocalChange?()
             }
         } catch {
-            let line = "Couldn't save watch progress of \(id): \(error.localizedDescription)"
-            logger.error("\(line, privacy: .public)")
+            logger.error("Couldn't save watch progress of \(id, privacy: .private(mask: .hash)): \(error.localizedDescription, privacy: .public)")
         }
     }
 }

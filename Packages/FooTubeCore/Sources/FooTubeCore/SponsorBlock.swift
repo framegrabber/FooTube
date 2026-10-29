@@ -62,10 +62,10 @@ public struct SponsorBlockClient: Sendable {
             let (data, response) = try await session.data(for: request)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
             let segments = Self.decode(data, for: videoID)
-            logger.info("\(videoID, privacy: .public): \(segments.count) segments")
+            logger.info("\(videoID, privacy: .private(mask: .hash)): \(segments.count) segments")
             return segments
         } catch {
-            logger.error("\(videoID, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("\(videoID, privacy: .private(mask: .hash)): \(error.localizedDescription, privacy: .public)")
             return []
         }
     }

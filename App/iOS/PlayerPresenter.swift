@@ -134,7 +134,7 @@ final class PlayerPresenter: NSObject, @MainActor AVPlayerViewControllerDelegate
         guard controller === self.controller else { return }
         isInPictureInPicture = true
         let id = session?.id.rawValue ?? ""
-        logger.info("\(id, privacy: .public) Picture in Picture started")
+        logger.info("\(id, privacy: .private(mask: .hash)) Picture in Picture started")
     }
 
     func playerViewController(_ controller: AVPlayerViewController, failedToStartPictureInPictureWithError error: any Error) {

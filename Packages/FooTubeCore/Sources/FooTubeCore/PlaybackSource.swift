@@ -66,8 +66,9 @@ private final class PlaylistLoader: NSObject, AVAssetResourceLoaderDelegate, Sen
     ) -> Bool {
         guard let url = loadingRequest.request.url?.absoluteURL, let playlist = playlists[url] else { return false }
         if url != master {
-            let line = "\(videoID) I-frame playlist \(url.lastPathComponent) requested \(ContinuousClock.now - createdAt) after load"
-            Self.logger.info("\(line, privacy: .public)")
+            let id = videoID
+            let line = "I-frame playlist \(url.lastPathComponent) requested \(ContinuousClock.now - createdAt) after load"
+            Self.logger.info("\(id, privacy: .private(mask: .hash)) \(line, privacy: .public)")
         }
         if let info = loadingRequest.contentInformationRequest {
             info.contentType = UTType.m3uPlaylist.identifier

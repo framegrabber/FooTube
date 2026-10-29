@@ -25,7 +25,7 @@ public struct YouTubeKitResolver: StreamResolver {
         do {
             if let master = try await video.livestreams.first(where: { $0.streamType == .hls })?.url {
                 if let stream = try await filteredHLS(videoID: videoID, master: master) {
-                    logger.info("\(videoID, privacy: .public): \(stream.summary, privacy: .public)")
+                    logger.info("\(videoID, privacy: .private(mask: .hash)): \(stream.summary, privacy: .public)")
                     return stream
                 }
                 hlsOutcome = "HLS offered but no H.264 ≤ \(profile.maxHeight)p variant"
@@ -35,7 +35,7 @@ public struct YouTubeKitResolver: StreamResolver {
         } catch {
             hlsOutcome = "HLS failed (\(error.localizedDescription))"
         }
-        logger.info("\(videoID, privacy: .public): \(hlsOutcome, privacy: .public); trying muxed")
+        logger.info("\(videoID, privacy: .private(mask: .hash)): \(hlsOutcome, privacy: .public); trying muxed")
 
         let streams: [YouTubeKit.Stream]
         do {
@@ -43,7 +43,7 @@ public struct YouTubeKitResolver: StreamResolver {
             streams = try await video.streams
         } catch {
             let mapped = Self.map(error)
-            logger.error("\(videoID, privacy: .public): \(mapped.message, privacy: .public)")
+            logger.error("\(videoID, privacy: .private(mask: .hash)): \(mapped.message, privacy: .public)")
             throw mapped
         }
 
@@ -52,17 +52,17 @@ public struct YouTubeKitResolver: StreamResolver {
             let error = ResolveError.noPlayableStream(
                 detail: "\(hlsOutcome); \(candidates.count) streams, none muxed H.264 ≤ \(profile.maxHeight)p with AAC",
             )
-            logger.error("\(videoID, privacy: .public): \(error.message, privacy: .public)")
+            logger.error("\(videoID, privacy: .private(mask: .hash)): \(error.message, privacy: .public)")
             throw error
         }
         let status = await firstBytesStatus(best.url)
         guard status == 200 || status == 206 else {
             let error = ResolveError.noPlayableStream(detail: "\(hlsOutcome); muxed itag \(best.itag) returned HTTP \(status)")
-            logger.error("\(videoID, privacy: .public): \(error.message, privacy: .public)")
+            logger.error("\(videoID, privacy: .private(mask: .hash)): \(error.message, privacy: .public)")
             throw error
         }
         let stream = ResolvedStream(videoID: videoID, url: best.url, kind: .muxed(itag: best.itag, height: height))
-        logger.info("\(videoID, privacy: .public): \(stream.summary, privacy: .public)")
+        logger.info("\(videoID, privacy: .private(mask: .hash)): \(stream.summary, privacy: .public)")
         return stream
     }
 
@@ -114,7 +114,7 @@ public struct YouTubeKitResolver: StreamResolver {
             return built.compactMapValues(\.self)
         }
         for source in sources where built[source.height] == nil {
-            logger.info("\(videoID, privacy: .public): no I-frame playlist from the \(source.height)p variant")
+            logger.info("\(videoID, privacy: .private(mask: .hash)): no I-frame playlist from the \(source.height)p variant")
         }
         return built
     }

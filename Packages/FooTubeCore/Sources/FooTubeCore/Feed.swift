@@ -38,7 +38,7 @@ public struct FeedService: Sendable {
                     do throws(CatalogError) {
                         return try await (index, catalog.channel(channel.id).videos.items)
                     } catch {
-                        logger.error("\(channel.id, privacy: .public): \(error.message, privacy: .public)")
+                        logger.error("\(channel.id, privacy: .private(mask: .hash)): \(error.message, privacy: .public)")
                         return (index, nil)
                     }
                 }

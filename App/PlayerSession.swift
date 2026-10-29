@@ -100,8 +100,7 @@ final class PlayerSession: Identifiable {
         guard timeToFirstFrame == nil else { return }
         let total = ContinuousClock.now - requestedAt
         timeToFirstFrame = total
-        let line = "\(source.id) first frame after \(total) (resolve \(resolvedAt - requestedAt)), \(source.stream.summary)"
-        logger.info("\(line, privacy: .public)")
+        log("first frame after \(total) (resolve \(resolvedAt - requestedAt)), \(source.stream.summary)")
     }
 
     func start() {
@@ -159,8 +158,7 @@ final class PlayerSession: Identifiable {
         endObserver = nil
         tracksProgress = false
         player.pause()
-        let line = "\(source.id) stopped at \(presentationHeight)p, \(droppedFrames) dropped frames"
-        logger.info("\(line, privacy: .public)")
+        log("stopped at \(presentationHeight)p, \(droppedFrames) dropped frames")
     }
 
     #if os(tvOS)
@@ -173,8 +171,7 @@ final class PlayerSession: Identifiable {
     #else
         /// The user chose a chapter in the chapter list.
         func seek(to chapter: Chapter) {
-            let line = "\(source.id) seeking to chapter at \(chapter.start)"
-            logger.info("\(line, privacy: .public)")
+            log("seeking to chapter at \(chapter.start)")
             position = chapter.start
             player.seek(
                 to: CMTime(seconds: chapter.start, preferredTimescale: 600),
@@ -207,8 +204,7 @@ final class PlayerSession: Identifiable {
             show(notice: String(localized: "\(segment.category.localizedName) skipped"))
         case let .offer(segment):
             if offeredSegment != segment {
-                let line = "\(source.id) offering skip of \(segment.category.rawValue) \(segment.start)-\(segment.end)"
-                logger.info("\(line, privacy: .public)")
+                log("offering skip of \(segment.category.rawValue) \(segment.start)-\(segment.end)")
                 offeredSegment = segment
             }
         case .none:
@@ -236,8 +232,7 @@ final class PlayerSession: Identifiable {
         }
         if let audible = try? await source.asset.loadMediaSelectionGroup(for: .audible) {
             let audio = item.currentMediaSelection.selectedMediaOption(in: audible)?.displayName ?? "none"
-            let line = "\(source.id) audio: \(audio) (\(audible.options.count) tracks)"
-            logger.info("\(line, privacy: .public)")
+            log("audio: \(audio) (\(audible.options.count) tracks)")
         }
         guard let resume, !Task.isCancelled else { return }
         // Up to 3 s before the saved position so AVPlayer can start at a keyframe.
@@ -246,8 +241,7 @@ final class PlayerSession: Identifiable {
             toleranceBefore: CMTime(seconds: 3, preferredTimescale: 600),
             toleranceAfter: .zero,
         )
-        let line = "\(source.id) resuming at \(resume) s, seek finished: \(finished)"
-        logger.info("\(line, privacy: .public)")
+        log("resuming at \(resume) s, seek finished: \(finished)")
         guard !Task.isCancelled else { return }
         beginPlayback()
     }
@@ -271,8 +265,7 @@ final class PlayerSession: Identifiable {
         do throws(CatalogError) {
             details = try await catalog.details(id)
         } catch {
-            let line = "\(source.id) no chapters or up next: \(error.message)"
-            logger.error("\(line, privacy: .public)")
+            log("no chapters or up next: \(error.message)", error: true)
             return
         }
         guard let item = await readyItem(), item.duration.seconds.isFinite else { return }
@@ -290,13 +283,17 @@ final class PlayerSession: Identifiable {
                 guard !Task.isCancelled else { return }
             }
             item.navigationMarkerGroups = Self.markerGroups(details.chapters, duration: duration, artwork: artwork)
-            let line = "\(source.id) \(details.chapters.count) chapters, up next: \(upNext?.id.rawValue ?? "none")"
+            if let next = upNext?.id {
+                let id = source.id
+                logger.info("\(id, privacy: .private(mask: .hash)) \(details.chapters.count) chapters, up next: \(next, privacy: .private(mask: .hash))")
+            } else {
+                log("\(details.chapters.count) chapters, no up next")
+            }
         #else
             guard !details.chapters.isEmpty, !Task.isCancelled else { return }
             chapters = details.chapters
-            let line = "\(source.id) \(details.chapters.count) chapters"
+            log("\(details.chapters.count) chapters")
         #endif
-        logger.info("\(line, privacy: .public)")
     }
 
     #if os(tvOS)
@@ -348,8 +345,7 @@ final class PlayerSession: Identifiable {
     }
 
     private func seek(past segment: SkipSegment) {
-        let line = "\(source.id) skipping \(segment.category.rawValue) \(segment.start)-\(segment.end)"
-        logger.info("\(line, privacy: .public)")
+        log("skipping \(segment.category.rawValue) \(segment.start)-\(segment.end)")
         // Zero tolerance before the end: a keyframe-snapped seek could land inside the segment.
         player.seek(
             to: CMTime(seconds: segment.end, preferredTimescale: 600),
@@ -373,6 +369,17 @@ final class PlayerSession: Identifiable {
         presentationHeight = Int(min(item.presentationSize.width, item.presentationSize.height))
         if let event = item.accessLog()?.events.last {
             droppedFrames = event.numberOfDroppedVideoFrames
+        }
+    }
+
+    /// Logs `line` (no video data) after the video ID, which is hashed: lines about one video stay
+    /// recognizable together, but the log doesn't show what was watched.
+    private func log(_ line: String, error: Bool = false) {
+        let id = source.id
+        if error {
+            logger.error("\(id, privacy: .private(mask: .hash)) \(line, privacy: .public)")
+        } else {
+            logger.info("\(id, privacy: .private(mask: .hash)) \(line, privacy: .public)")
         }
     }
 }

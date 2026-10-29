@@ -168,7 +168,7 @@ public struct InnerTubeCatalog: Catalog {
                 videos: Self.page(uploads.videos, token: uploads.continuation, visitorData: nil, channel: ref),
             )
         } catch {
-            logger.error("channel \(id, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("channel \(id, privacy: .private(mask: .hash)) failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
         }
     }
@@ -215,7 +215,7 @@ public struct InnerTubeCatalog: Catalog {
                 related: Self.page(response.recommendedVideos, token: nil, visitorData: nil).items,
             )
         } catch {
-            logger.error("details \(id, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("details \(id, privacy: .private(mask: .hash)) failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
         }
     }

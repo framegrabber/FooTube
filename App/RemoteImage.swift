@@ -123,16 +123,16 @@ final class RemoteImageLoader {
         do {
             let (data, response) = try await session.data(from: request.url)
             if let http = response as? HTTPURLResponse, !(200 ..< 300).contains(http.statusCode) {
-                logger.error("Image \(request.url.absoluteString, privacy: .public): HTTP \(http.statusCode)")
+                logger.error("Image \(request.url.absoluteString, privacy: .private(mask: .hash)): HTTP \(http.statusCode)")
                 return nil
             }
             guard let image = downsample(data, toFill: request) else {
-                logger.error("Image \(request.url.absoluteString, privacy: .public): undecodable")
+                logger.error("Image \(request.url.absoluteString, privacy: .private(mask: .hash)): undecodable")
                 return nil
             }
             return image
         } catch {
-            logger.error("Image \(request.url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("Image \(request.url.absoluteString, privacy: .private(mask: .hash)): \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
