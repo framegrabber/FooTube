@@ -141,7 +141,7 @@ For development against a local Worker: `npm run dev` in FooTubeSyncBackend, the
 
 ### Adding videos from anywhere
 
-With sync on, videos can go into Watch Later from places FooTube doesn't run. They wait in your Worker's inbox and show up in Watch Later on every device at its next sync (on iPhone/iPad and Apple TV, **Refresh** in Watch Later syncs right away). All of these use the Worker's **inbox token** (FooTubeSyncBackend README, step 3), which can only add videos. Never put the household sync token into a bookmark or a Shortcut.
+With sync on, videos can go into Watch Later from places FooTube doesn't run. They wait in your Worker's inbox and show up in Watch Later on every device at its next sync (pulling down in Watch Later on iPhone/iPad, or **Refresh** there on Apple TV, syncs right away). All of these use the Worker's **inbox token** (FooTubeSyncBackend README, step 3), which can only add videos. Never put the household sync token into a bookmark or a Shortcut.
 
 **Bookmark "→ FooTube" (Mac, iPhone, iPad):** generate it as the FooTubeSyncBackend README describes (step 7) and save it as a bookmark in Safari or Chrome. On a YouTube video page, choosing the bookmark adds the video. In Safari on iPhone or iPad, bookmarks synced from the Mac through iCloud work as they are; to create one on the device itself, bookmark any page (Share → Add Bookmark), then open Bookmarks → Edit → the bookmark, and replace its address with the copied `javascript:` line. To use it, open a video on youtube.com in Safari, tap the address bar and choose the bookmark from the list (or open Bookmarks and tap it).
 

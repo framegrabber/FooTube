@@ -2,8 +2,8 @@ import FooTubeCore
 import SwiftUI
 
 /// Videos saved with Add to Watch Later, most recently added first; swipe to remove. With sync on,
-/// pull to refresh (or Refresh) syncs Watch Later right away, picking up videos added from a browser
-/// or the "Add to FooTube" shortcut.
+/// pull to refresh syncs Watch Later right away, picking up videos added from a browser or the
+/// "Add to FooTube" shortcut.
 struct WatchLaterView: View {
     let catalog: any Catalog
 
@@ -11,59 +11,46 @@ struct WatchLaterView: View {
     @Environment(SyncModel.self) private var sync
     @Environment(PlaybackController.self) private var playback
     @State private var path: [ChannelRef] = []
-    @State private var isRefreshing = false
     @State private var refreshFailed = false
 
     var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if watchLater.items.isEmpty {
-                    ContentUnavailableView {
-                        Label("Nothing Saved", systemImage: "clock")
-                    } description: {
-                        Text("Touch and hold a video and choose Add to Watch Later.")
-                    } actions: {
-                        if let error = watchLater.lastError {
-                            ErrorMessage(message: error)
-                        }
-                        if refreshFailed {
-                            ErrorMessage(message: String(localized: "Couldn't reach the sync server. Try again later."))
-                        }
-                        if sync.isConfigured {
-                            Button("Refresh") {
-                                Task { await refresh() }
-                            }
-                            .disabled(isRefreshing)
-                        }
-                    }
-                } else {
-                    list
+            content
+                .navigationTitle("Watch Later")
+                .navigationDestination(for: ChannelRef.self) { channel in
+                    ChannelView(catalog: catalog, channel: channel)
                 }
-            }
-            .navigationTitle("Watch Later")
-            .toolbar {
-                if sync.isConfigured {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if isRefreshing {
-                            ProgressView()
-                        } else {
-                            Button("Refresh", systemImage: "arrow.clockwise") {
-                                Task { await refresh() }
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationDestination(for: ChannelRef.self) { channel in
-                ChannelView(catalog: catalog, channel: channel)
-            }
         }
     }
 
     @ViewBuilder
-    private var list: some View {
+    private var content: some View {
         if sync.isConfigured {
-            rows.refreshable { await refresh() }
+            items.refreshable { await refresh() }
+        } else {
+            items
+        }
+    }
+
+    @ViewBuilder
+    private var items: some View {
+        if watchLater.items.isEmpty {
+            // In a scroll view so pull to refresh also works while the list is empty.
+            ScrollView {
+                ContentUnavailableView {
+                    Label("Nothing Saved", systemImage: "clock")
+                } description: {
+                    Text("Touch and hold a video and choose Add to Watch Later.")
+                } actions: {
+                    if let error = watchLater.lastError {
+                        ErrorMessage(message: error)
+                    }
+                    if refreshFailed {
+                        ErrorMessage(message: String(localized: "Couldn't reach the sync server. Try again later."))
+                    }
+                }
+                .containerRelativeFrame(.vertical)
+            }
         } else {
             rows
         }
@@ -98,8 +85,6 @@ struct WatchLaterView: View {
     }
 
     private func refresh() async {
-        isRefreshing = true
         refreshFailed = await !(sync.refresh(.watchLater))
-        isRefreshing = false
     }
 }

@@ -34,13 +34,6 @@ struct SubscriptionsView: View {
                 }
             }
             .navigationTitle("Subscriptions")
-            .toolbar {
-                if feed.isRefreshing {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        ProgressView()
-                    }
-                }
-            }
             .task(id: subscriptions.subscriptions.map(\.id)) {
                 await feed.refresh(subscriptions.subscriptions)
             }
@@ -73,6 +66,10 @@ struct SubscriptionsView: View {
                         ErrorMessage(message: error)
                     }
                     header
+                    if feed.snapshot == nil, feed.isRefreshing {
+                        // First load only; later refreshes show the system pull-to-refresh spinner.
+                        ProgressView().frame(maxWidth: .infinity)
+                    }
                     if let selected, videos.isEmpty, !feed.isRefreshing {
                         Text("No recent videos from \(selected.name) in the feed.")
                             .foregroundStyle(.secondary)
