@@ -163,4 +163,13 @@ struct SyncInboxTests {
         #expect(folded.entries.map(\.video.id.rawValue) == [bunny])
         #expect(folded.entries.map(\.changedAt) == [start + 1])
     }
+
+    @Test func `item titles are cleaned like the Worker's: no control or format characters, at most 200 characters`() {
+        let items = [
+            InboxItem(seq: 1, videoID: bunny, title: "\u{202E}Big\u{7} Buck\u{2066} Bunny\u{0}", addedAt: start),
+            InboxItem(seq: 2, videoID: fright, title: String(repeating: "x", count: 5000), addedAt: start + 1),
+        ]
+        let folded = SyncInbox.fold(items, into: .empty, now: start + 2)
+        #expect(folded.entries.map(\.video.title) == [String(repeating: "x", count: 200), "Big Buck Bunny"])
+    }
 }

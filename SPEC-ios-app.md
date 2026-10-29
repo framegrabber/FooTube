@@ -22,7 +22,7 @@ FooTube on iPhone and iPad, for two jobs: **watching** (the same ad-free playbac
 - **Adding from anywhere (story 4)** without a second app slot:
   - **Shortcut "Add to FooTube"** in the share sheet: takes the shared URL, extracts the video ID, and posts it to `POST /v1/inbox` with the **inbox token** (add-only). Works even when FooTube isn't open or installed on that device; every FooTube picks it up on its next Watch Later sync. README gives step-by-step build instructions (Shortcuts can't be generated from the repo).
   - **Safari bookmarklet:** the existing `.bookmarklet.txt` works in Safari on iPhone/iPad too; documented.
-  - **`footube://` URL scheme** in the app: `footube://play?v=<id>` and `footube://watch-later?v=<id>`, for Shortcuts that should open FooTube instead.
+  - **`footube://` URL scheme** in the app: `footube://play?v=<id>` and `footube://watch-later?v=<id>[&title=<title>]`, for Shortcuts that should open FooTube instead. The title is cleaned like an inbox title (SPEC-browser-inbox → Client).
 
 ## Commands
 ```

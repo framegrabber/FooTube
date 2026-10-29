@@ -40,6 +40,14 @@ struct AppLinkTests {
         #expect(link("footube://watch-later?title=&v=dQw4w9WgXcQ") == .watchLater(id, title: nil))
     }
 
+    @Test func `watch later titles lose control and format characters and stop at 200 characters`() throws {
+        let id = try #require(id)
+        // U+202E right-to-left override, BEL, U+200B zero width space, a line break.
+        #expect(link("footube://watch-later?v=dQw4w9WgXcQ&title=%E2%80%AEevil%07%E2%80%8B%0Atitle") == .watchLater(id, title: "evil title"))
+        #expect(link("footube://watch-later?v=dQw4w9WgXcQ&title=\(String(repeating: "a", count: 300_000))") == .watchLater(id, title: String(repeating: "a", count: 200)))
+        #expect(link("footube://watch-later?v=dQw4w9WgXcQ&title=%E2%80%AE%0A%00") == .watchLater(id, title: nil))
+    }
+
     @Test(arguments: [
         "footube://play",
         "footube://play?v=",
@@ -61,5 +69,12 @@ struct AppLinkTests {
         #expect(bare.thumbnail?.absoluteString == "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg")
         #expect(bare.channel == nil && bare.duration == nil)
         #expect(VideoSummary.bare(id, title: "A title").title == "A title")
+    }
+
+    @Test func `a bare summary cleans the title it is given; nothing left falls back to the ID`() throws {
+        let id = try #require(id)
+        #expect(VideoSummary.bare(id, title: "\u{202E}  Big Buck Bunny\u{0}  ").title == "Big Buck Bunny")
+        #expect(VideoSummary.bare(id, title: String(repeating: "🐰", count: 300)).title == String(repeating: "🐰", count: 200))
+        #expect(VideoSummary.bare(id, title: "\u{200E}\u{FEFF} ").title == "dQw4w9WgXcQ")
     }
 }
