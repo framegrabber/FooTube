@@ -15,9 +15,9 @@ It was built for the **Apple TV HD (4th generation, A8)**, which can only decode
 
 ## Features
 
-- **Subscriptions** without an account: a feed of the latest uploads from your channels, newest first, with a sidebar to filter by channel.
+- **Subscriptions** without an account: a feed of the latest uploads from your channels, newest first, with a sidebar to filter by channel. Videos you've watched are left out (Settings can show them).
 - **Search** with suggestions while you type; results include matching channels.
-- **Channel pages** with all uploads and a Subscribe button. Members-only videos are hidden.
+- **Channel pages** with the channel's handle, subscriber and video counts, its description, all uploads and a Subscribe button. Members-only videos are hidden.
 - **Native player** (`AVPlayerViewController`): Siri Remote scrubbing, the info panel, original audio track, subtitles off by default.
 - **SponsorBlock**: sponsor segments are skipped automatically; other segment types (intro, self-promotion, …) get a "Skip" button. Each category can be set to skip automatically, show the button, or be ignored in Settings.
 - **Chapters** from the video description in the player's Chapters row, with thumbnails.
@@ -25,8 +25,8 @@ It was built for the **Apple TV HD (4th generation, A8)**, which can only decode
 - **Up next**: when a video ends, a related video (preferably from the same channel) plays after a 10-second countdown.
 - **Resume** where you left off, plus **History** and **Watch Later** tabs (long-press a video for the menu).
 - **Sync (optional)**: subscriptions, Watch Later, History with resume positions and SponsorBlock settings stay the same on every Apple TV of the household, through your own server on Cloudflare's free plan.
-- **Settings**: SponsorBlock behavior per category, sync status, clearing History and Watch Later, version, when a sideloaded install expires, and credits.
-- Interface in English and German; titles and dates in your device's language.
+- **Settings**: SponsorBlock behavior per category, hiding watched videos in Subscriptions, sync status, clearing History and Watch Later, version, when a sideloaded install expires, and credits.
+- Interface in English and German; dates and counts in your device's language. Video titles stay in the video's own language: YouTube translates them in every list, so FooTube looks up each video's original title once (`youtube.com/oembed`, else the video's player data) and remembers it.
 - Follows Apple's tvOS design: native lockups with lift and tilt, light and dark mode.
 - **iPhone and iPad** (iOS 18+): the same app with touch screens (tab bar on iPhone, sidebar on iPad), Picture in Picture and AirPlay, a Chapters list in the player, a Skip button for SponsorBlock segments, and pasting the sync configuration in Settings. No Up next on iOS: a video simply ends.
 

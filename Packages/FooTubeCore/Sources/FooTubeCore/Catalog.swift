@@ -134,7 +134,8 @@ public protocol Catalog: Sendable {
     func suggestions(_ query: String) async throws(CatalogError) -> [String]
 }
 
-/// Catalog backed by YouTube's InnerTube API via the vendored b5i/YouTubeKit (`InnerTubeKit`).
+/// Catalog backed by YouTube's InnerTube API via the vendored b5i/YouTubeKit (`InnerTubeKit`). Video
+/// titles are replaced by their originals (`OriginalTitles`); YouTube translates them in every list.
 public struct InnerTubeCatalog: Catalog {
     /// Thumbnails are downscaled for the A8: the smallest one at least this wide is used.
     static let preferredThumbnailWidth = 480
@@ -143,12 +144,21 @@ public struct InnerTubeCatalog: Catalog {
 
     private let logger = Logger(subsystem: AppInfo.logSubsystem, category: "catalog")
 
-    public init() {}
+    private let titles: OriginalTitles
+
+    public init(titles: OriginalTitles = .shared) {
+        self.titles = titles
+    }
+
+    /// `page` with every video's original title (`OriginalTitles`) instead of YouTube's translation.
+    private func withOriginalTitles(_ page: ResultsPage) async -> ResultsPage {
+        await ResultsPage(items: titles.originals(for: page.items), channels: page.channels, next: page.next)
+    }
 
     /// YouTubeModel is a non-Sendable class; a fresh one per request keeps this type Sendable.
-    /// Requests use the device's preferred language (titles and descriptions in the owner's language,
-    /// e.g. `de-DE`) and region, falling back to `en-US`. `FeedMerger.age(of:)` parses English and
-    /// German relative ages.
+    /// Requests use the device's preferred language (dates, view counts and channel descriptions in the
+    /// owner's language, e.g. `de-DE`) and region, falling back to `en-US`. `FeedMerger.age(of:)`
+    /// parses English and German relative ages.
     private static func model() -> YouTubeModel {
         let model = YouTubeModel()
         let language = Locale.preferredLanguages.first
@@ -167,14 +177,14 @@ public struct InnerTubeCatalog: Catalog {
                 uploads = try await ChannelVideosResponse.sendThrowingRequest(youtubeModel: model, data: [.browseId: id, .params: params])
             }
             let ref = ChannelRef(id: id, name: header.name ?? uploads.name)
-            return ChannelPage(
+            return await ChannelPage(
                 channel: ref,
                 avatar: Self.preferredThumbnail(header.avatarThumbnails, width: Self.preferredAvatarWidth),
                 handle: Self.nonEmpty(header.handle),
                 subscriberCount: header.subscriberCount,
                 videoCount: Self.nonEmpty(header.videoCount),
                 description: Self.nonEmpty(header.shortDescription),
-                videos: Self.page(uploads.videos, token: uploads.continuation, visitorData: nil, channel: ref),
+                videos: withOriginalTitles(Self.page(uploads.videos, token: uploads.continuation, visitorData: nil, channel: ref)),
             )
         } catch {
             logger.error("channel \(id, privacy: .private(mask: .hash)) failed: \(error.localizedDescription, privacy: .public)")
@@ -186,7 +196,7 @@ public struct InnerTubeCatalog: Catalog {
         do {
             let response = try await ChannelVideosResponse.Continuation
                 .sendThrowingRequest(youtubeModel: Self.model(), data: [.continuation: cursor.token])
-            return Self.page(response.videos, token: response.continuation, visitorData: nil, channel: cursor.channel)
+            return await withOriginalTitles(Self.page(response.videos, token: response.continuation, visitorData: nil, channel: cursor.channel))
         } catch {
             logger.error("channel continuation failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
@@ -196,7 +206,7 @@ public struct InnerTubeCatalog: Catalog {
     public func search(_ query: String) async throws(CatalogError) -> ResultsPage {
         do {
             let response = try await SearchResponse.sendThrowingRequest(youtubeModel: Self.model(), data: [.query: query])
-            return Self.page(response.results, token: response.continuationToken, visitorData: response.visitorData)
+            return await withOriginalTitles(Self.page(response.results, token: response.continuationToken, visitorData: response.visitorData))
         } catch {
             logger.error("search failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
@@ -208,7 +218,7 @@ public struct InnerTubeCatalog: Catalog {
         data[.visitorData] = cursor.visitorData
         do {
             let response = try await SearchResponse.Continuation.sendThrowingRequest(youtubeModel: Self.model(), data: data)
-            return Self.page(response.results, token: response.continuationToken, visitorData: cursor.visitorData)
+            return await withOriginalTitles(Self.page(response.results, token: response.continuationToken, visitorData: cursor.visitorData))
         } catch {
             logger.error("search continuation failed: \(error.localizedDescription, privacy: .public)")
             throw .requestFailed(error.localizedDescription)
@@ -218,10 +228,10 @@ public struct InnerTubeCatalog: Catalog {
     public func details(_ id: VideoID) async throws(CatalogError) -> VideoDetails {
         do {
             let response = try await MoreVideoInfosResponse.sendThrowingRequest(youtubeModel: Self.model(), data: [.query: id.rawValue])
-            return VideoDetails(
+            return await VideoDetails(
                 chapters: Self.chapters(response.chapters ?? []),
                 channelID: response.channel.flatMap { $0.channelId.isEmpty ? nil : $0.channelId },
-                related: Self.page(response.recommendedVideos, token: nil, visitorData: nil).items,
+                related: titles.originals(for: Self.page(response.recommendedVideos, token: nil, visitorData: nil).items),
             )
         } catch {
             logger.error("details \(id, privacy: .private(mask: .hash)) failed: \(error.localizedDescription, privacy: .public)")

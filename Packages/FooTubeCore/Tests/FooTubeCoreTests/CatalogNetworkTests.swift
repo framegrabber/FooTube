@@ -91,4 +91,14 @@ struct CatalogNetworkTests {
         #expect(suggestions.count >= 3)
         #expect(suggestions.allSatisfy { $0.localizedCaseInsensitiveContains("blender") })
     }
+
+    @Test func `original titles come back in the video's own language`() async throws {
+        let ids = ["WhWc3b3KhnY", "ub-oC-r7JQM", "fudtEN1O70Q"] // English, Japanese, German with embedding disabled
+        let placeholders = try ids.map { try VideoSummary(id: #require(VideoID($0)), title: "?", channel: nil, duration: nil, viewCount: nil, published: nil, thumbnail: nil) }
+        let titles = await OriginalTitles(file: nil).originals(for: placeholders).map(\.title)
+        print("RESULT original titles: \(titles)")
+        #expect(titles[0] == "Spring - Blender Open Movie")
+        #expect(titles[1].contains("iPhone水没"))
+        #expect(titles[2] != "?") // oEmbed 401, title from the player
+    }
 }

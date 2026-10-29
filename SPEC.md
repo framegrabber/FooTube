@@ -117,6 +117,7 @@ Naming: types `UpperCamelCase`, no `Manager`/`Helper` suffixes; one primary type
 - Subscriptions start empty; added only via the channel page. No Takeout import.
 - Sync between the household's Apple TVs goes through a self-hosted Cloudflare Worker, not iCloud (needs the paid program): [SYNC.md](SYNC.md), [SPEC-sync-client.md](SPEC-sync-client.md).
 - Artwork (thumbnails, avatars, chapter images) loads only over `https` from hosts under `ytimg.com`, `ggpht.com` and `googleusercontent.com` (`ArtworkURL`, the hosts InnerTube returns); any other URL, e.g. one from a synced document, shows the gray placeholder and is never requested (2026-10-29, security review).
+- Video titles are shown in the video's own language (owner's request, 2026-10-29). YouTube translates titles into the request's `hl` in every list (browse, search, next) and for every client (56 of 180 channel-upload titles for `hl=de` in a test); only per-video endpoints return the original. `OriginalTitles` looks each one up once, `www.youtube.com/oembed` first and the WEB player's `videoDetails.title` when oEmbed has none (embedding disabled, live), and caches it in Caches; lists keep `hl` = device language for dates and counts.
 - Device runs tvOS 26 (owner reports "25 or 26"; Apple went from 18 to 26, so ≥ 18 either way). Deployment target tvOS 18 stands.
 
 ## Out of Scope (possible later)
