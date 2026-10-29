@@ -116,7 +116,7 @@ Debug launch arguments (Simulator or `run-device.sh`/`run-ios-device.sh`, after 
 
 ## Sync (optional)
 
-Subscriptions, Watch Later, History (with resume positions) and SponsorBlock settings can be the same on every Apple TV, iPhone and iPad of your household. They go only to a small server you deploy yourself on Cloudflare's free plan, from the FooTubeSyncBackend repository: its README covers deploying it and creating the token. Without it, FooTube sends nothing anywhere new.
+Subscriptions, Watch Later, History (with resume positions) and SponsorBlock settings can be the same on every Apple TV, iPhone and iPad of your household. They go only to a small server you deploy yourself on Cloudflare's free plan, from the [FooTubeSyncBackend](https://github.com/framegrabber/FooTubeSyncBackend) repository: its README covers deploying it and creating the token. Without it, FooTube sends nothing anywhere new.
 
 Connect each Apple TV once (iPhone/iPad: the same with `scripts/run-ios-device.sh`). Put the Worker's URL and the sync token in `~/.config/footube/sync.env`, readable only by you:
 
