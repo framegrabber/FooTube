@@ -42,9 +42,16 @@ struct ChannelView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(model.name ?? String(localized: "Channel"))
                     .font(.title2)
-                if let subscribers = model.page?.subscriberCount {
-                    Text(subscribers)
+                if let facts = model.facts {
+                    Text(verbatim: facts)
                         .foregroundStyle(.secondary)
+                }
+                if let description = model.page?.description {
+                    Text(verbatim: description)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: 1200, alignment: .leading)
                 }
                 Button(subscriptions.isSubscribed(model.channel.id) ? LocalizedStringKey("Unsubscribe") : LocalizedStringKey("Subscribe")) {
                     subscriptions.toggle(model.page?.channel ?? model.channel, avatar: model.page?.avatar)

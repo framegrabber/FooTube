@@ -80,7 +80,13 @@ public enum CatalogError: Error, Hashable, Sendable {
 public struct ChannelPage: Sendable {
     public let channel: ChannelRef
     public let avatar: URL?
+    /// "@handle", as YouTube shows it.
+    public let handle: String?
     public let subscriberCount: String?
+    /// "1.2K videos", in the request language.
+    public let videoCount: String?
+    /// The channel's About text, trimmed; nil if empty.
+    public let description: String?
     public let videos: ResultsPage
 }
 
@@ -164,7 +170,10 @@ public struct InnerTubeCatalog: Catalog {
             return ChannelPage(
                 channel: ref,
                 avatar: Self.preferredThumbnail(header.avatarThumbnails, width: Self.preferredAvatarWidth),
+                handle: Self.nonEmpty(header.handle),
                 subscriberCount: header.subscriberCount,
+                videoCount: Self.nonEmpty(header.videoCount),
+                description: Self.nonEmpty(header.shortDescription),
                 videos: Self.page(uploads.videos, token: uploads.continuation, visitorData: nil, channel: ref),
             )
         } catch {
@@ -282,6 +291,12 @@ public struct InnerTubeCatalog: Catalog {
             videoCount: channel.videoCount,
             avatar: preferredThumbnail(channel.thumbnails, width: preferredAvatarWidth),
         )
+    }
+
+    /// `text` without surrounding whitespace; nil if nothing is left.
+    static func nonEmpty(_ text: String?) -> String? {
+        let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     /// Smallest thumbnail at least `width` wide, else the largest available.

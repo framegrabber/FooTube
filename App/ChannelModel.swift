@@ -25,6 +25,12 @@ final class ChannelModel {
         page?.channel.name ?? channel.name
     }
 
+    /// "@handle · 1.2M subscribers · 1,594 videos", as YouTube words them; nil until loaded.
+    var facts: String? {
+        let parts = [page?.handle, page?.subscriberCount, page?.videoCount].compactMap(\.self)
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     func load() async {
         guard page == nil else { return } // `.task` re-runs when navigating back; keep paged results
         do throws(CatalogError) {

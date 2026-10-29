@@ -36,22 +36,30 @@ struct ChannelView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 16) {
-            RemoteImage(url: model.page?.avatar, size: CGSize(width: avatarSize, height: avatarSize))
-                .frame(width: avatarSize, height: avatarSize)
-                .clipShape(.circle)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(model.name ?? String(localized: "Channel"))
-                    .font(.title2.bold())
-                    .accessibilityAddTraits(.isHeader)
-                if let subscribers = model.page?.subscriberCount {
-                    Text(subscribers)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
+                RemoteImage(url: model.page?.avatar, size: CGSize(width: avatarSize, height: avatarSize))
+                    .frame(width: avatarSize, height: avatarSize)
+                    .clipShape(.circle)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(model.name ?? String(localized: "Channel"))
+                        .font(.title2.bold())
+                        .accessibilityAddTraits(.isHeader)
+                    if let facts = model.facts {
+                        Text(verbatim: facts)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    subscribeButton
+                        .disabled(model.page == nil) // wait for the real name and avatar
                 }
-                subscribeButton
-                    .disabled(model.page == nil) // wait for the real name and avatar
+            }
+            if let description = model.page?.description {
+                Text(verbatim: description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -28,8 +28,11 @@ struct CatalogNetworkTests {
         let catalog = InnerTubeCatalog()
         let blender = "UCSMOQeBJ2RAnuFungnQOxLg" // Blender
         let page = try await catalog.channel(blender)
-        print("RESULT channel \(page.channel.name ?? "?"): \(page.videos.items.count) videos, subs \(page.subscriberCount ?? "?"), avatar \(page.avatar != nil)")
+        print("RESULT channel \(page.channel.name ?? "?"): \(page.videos.items.count) videos, subs \(page.subscriberCount ?? "?"), handle \(page.handle ?? "?"), count \(page.videoCount ?? "?"), description \(page.description?.prefix(60) ?? "?"), avatar \(page.avatar != nil)")
         #expect(page.channel.name?.isEmpty == false)
+        #expect(page.handle?.hasPrefix("@") == true)
+        #expect(page.videoCount != nil)
+        #expect(page.description != nil)
         #expect(page.videos.items.count >= 10)
         #expect(page.videos.items.allSatisfy { $0.channel?.id == blender })
         let more = try await catalog.moreChannelVideos(#require(page.videos.next))

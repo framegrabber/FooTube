@@ -24,7 +24,10 @@ private actor FakeChannels: Catalog {
         if failing.contains(id) {
             throw .requestFailed("offline")
         }
-        return ChannelPage(channel: ChannelRef(id: id, name: id), avatar: nil, subscriberCount: nil, videos: ResultsPage(items: uploads[id] ?? [], next: nil))
+        return ChannelPage(
+            channel: ChannelRef(id: id, name: id), avatar: nil, handle: nil, subscriberCount: nil, videoCount: nil, description: nil,
+            videos: ResultsPage(items: uploads[id] ?? [], next: nil),
+        )
     }
 
     func search(_: String) async throws(CatalogError) -> ResultsPage {
