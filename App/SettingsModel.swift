@@ -36,3 +36,9 @@ final class SettingsModel {
         onLocalChange?()
     }
 }
+
+/// Display preferences of this device only (UserDefaults keys for `@AppStorage`; not synced).
+enum DevicePreference {
+    /// Subscriptions leave out videos with the Watched mark. Default on.
+    static let hideWatchedInSubscriptions = "hideWatchedInSubscriptions"
+}

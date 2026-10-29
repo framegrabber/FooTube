@@ -22,6 +22,7 @@ private struct SettingsPage: View {
     enum Row: Hashable {
         case category(SponsorCategory)
         case restoreDefaults
+        case hideWatched
         case syncState
         case syncNow
         case clearHistory
@@ -46,6 +47,7 @@ private struct SettingsPage: View {
     /// The description keeps the last row while focus is in the tab bar.
     @State private var described: Row = .category(.sponsor)
     @State private var confirmation: Confirmation?
+    @AppStorage(DevicePreference.hideWatchedInSubscriptions) private var hideWatched = true
 
     var body: some View {
         SettingsLayout(title: String(localized: "Settings"), description: description(of: described)) {
@@ -59,6 +61,12 @@ private struct SettingsPage: View {
                 Button("Restore Defaults") { settings.restoreDefaults() }
                     .disabled(settings.skip.isDefault)
                     .focused($focus, equals: .restoreDefaults)
+            }
+            Section("Subscriptions") {
+                Button { hideWatched.toggle() } label: {
+                    LabeledContent("Hide Watched Videos") { Text(hideWatched ? "On" : "Off") }
+                }
+                .focused($focus, equals: .hideWatched)
             }
             Section("Sync") {
                 Button {} label: { LabeledContent("Status") { SyncStateText(state: sync.state) } }
@@ -129,6 +137,8 @@ private struct SettingsPage: View {
             SettingsDescription(text: category.localizedDescription)
         case .restoreDefaults:
             SettingsDescription(text: String(localized: "By default, sponsor segments are skipped automatically and every other category shows a Skip button."))
+        case .hideWatched:
+            SettingsDescription(text: String(localized: "Videos you watched to the end don't appear in Subscriptions. This setting is for this Apple TV only."))
         case .syncState:
             if let host = sync.serverHost {
                 SettingsDescription(

@@ -2,7 +2,8 @@ import FooTubeCore
 import SwiftUI
 
 /// Latest uploads from subscribed channels (stored on this device), with a sidebar of the channels
-/// to filter the feed by one of them and open its full channel page. The tab owner holds `path`.
+/// to filter the feed by one of them and open its full channel page. Watched videos are left out
+/// unless Settings turns that off. The tab owner holds `path`.
 struct SubscriptionsView: View {
     let catalog: any Catalog
     @Binding var path: [ChannelRef]
@@ -11,6 +12,8 @@ struct SubscriptionsView: View {
 
     @Environment(SubscriptionsModel.self) private var subscriptions
     @Environment(FeedModel.self) private var feed
+    @Environment(WatchHistoryModel.self) private var watchHistory
+    @AppStorage(DevicePreference.hideWatchedInSubscriptions) private var hideWatched = true
     /// Sidebar selection; nil is "All".
     @State private var selectedID: String?
 
@@ -52,9 +55,9 @@ struct SubscriptionsView: View {
     }
 
     private var videos: [VideoSummary] {
-        let all = feed.snapshot?.items ?? []
-        guard let selected else { return all }
-        return all.filter { $0.channel?.id == selected.id }
+        (feed.snapshot?.items ?? []).filter { video in
+            (selected.map { video.channel?.id == $0.id } ?? true) && !(hideWatched && watchHistory.isWatched(video.id))
+        }
     }
 
     private var feedColumn: some View {

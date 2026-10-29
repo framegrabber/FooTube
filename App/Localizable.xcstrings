@@ -471,6 +471,16 @@
         }
       }
     },
+    "Hide Watched Videos": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesehene Videos ausblenden"
+          }
+        }
+      }
+    },
     "History": {
       "localizations": {
         "de": {
@@ -627,6 +637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Offline, neuer Versuch folgt"
+          }
+        }
+      }
+    },
+    "On": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein"
           }
         }
       }
@@ -1417,6 +1437,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Videos, die du abspielst, erscheinen hier, die neuesten zuerst. So machst du dort weiter, wo du aufgehört hast."
+          }
+        }
+      }
+    },
+    "Videos you watched to the end don't appear in Subscriptions. This setting is for this Apple TV only.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Videos, die du zu Ende gesehen hast, erscheinen nicht in „Abos“. Diese Einstellung gilt nur für dieses Apple TV."
+          }
+        }
+      }
+    },
+    "Videos you watched to the end don't appear in Subscriptions. This setting is for this device only.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Videos, die du zu Ende gesehen hast, erscheinen nicht in „Abos“. Diese Einstellung gilt nur für dieses Gerät."
           }
         }
       }

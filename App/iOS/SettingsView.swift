@@ -1,8 +1,9 @@
 import FooTubeCore
 import SwiftUI
 
-/// Settings on iPhone and iPad: SponsorBlock categories, Sync (status, Sync Now, connecting a server
-/// by pasting its URL and token, turning sync off), clearing History and Watch Later, About.
+/// Settings on iPhone and iPad: SponsorBlock categories, hiding watched videos in Subscriptions, Sync
+/// (status, Sync Now, connecting a server by pasting its URL and token, turning sync off), clearing
+/// History and Watch Later, About.
 struct SettingsView: View {
     private enum Confirmation: Identifiable {
         case history, watchLater, turnOffSync
@@ -15,6 +16,7 @@ struct SettingsView: View {
     @Environment(WatchHistoryModel.self) private var watchHistory
     @Environment(WatchLaterModel.self) private var watchLater
     @Environment(SyncModel.self) private var sync
+    @AppStorage(DevicePreference.hideWatchedInSubscriptions) private var hideWatched = true
     @State private var confirmation: Confirmation?
     @State private var turnOffError: String?
 
@@ -22,6 +24,13 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 sponsorBlock
+                Section {
+                    Toggle("Hide Watched Videos", isOn: $hideWatched)
+                } header: {
+                    Text("Subscriptions")
+                } footer: {
+                    Text("Videos you watched to the end don't appear in Subscriptions. This setting is for this device only.")
+                }
                 SyncSection(onTurnOff: { confirmation = .turnOffSync }, turnOffError: turnOffError)
                 data
                 about
