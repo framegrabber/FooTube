@@ -259,4 +259,60 @@ struct SyncClientTests {
         #expect(request.query == "through=7")
         #expect(request.header("Authorization") == "Bearer \(Self.token)")
     }
+
+    @Test func `an inbox with more than the Worker's 100 items is rejected`() async throws {
+        func body(_ count: Int) -> Data {
+            let items = (0 ..< count).map { #"{"seq":\#($0 + 1),"videoID":"aqz-KE-bpKQ","addedAt":"2027-01-15T08:00:00.000Z"}"# }
+            return Data(#"{"items":[\#(items.joined(separator: ","))]}"#.utf8)
+        }
+        let server = StubURLProtocol.Server([.response(status: 200, body: body(100)), .response(status: 200, body: body(101))])
+        let client = client(server)
+        #expect(try await client.inbox()?.count == 100)
+        #expect(await syncError { () async throws(SyncError) in try await client.inbox() } == .invalidDocument(detail: "inbox has more than 100 items"))
+    }
+
+    // MARK: Limits and redirects
+
+    @Test func `a response over 1 MiB plus margin is rejected, with or without Content-Length`() async throws {
+        let largest = Data(repeating: 0x20, count: SyncClient.maxResponseBytes)
+        let server = StubURLProtocol.Server([
+            .response(status: 200, headers: ["ETag": #""1""#], body: largest),
+            .response(status: 200, headers: ["ETag": #""2""#], body: largest + Data([0x20])),
+            .response(status: 412, headers: ["ETag": #""3""#], body: largest + Data([0x20])),
+            .response(status: 200, headers: ["ETag": #""4""#, "Content-Length": "500000000"], body: Data("{}".utf8)),
+        ])
+        let client = client(server)
+        let tooLarge = SyncError.invalidDocument(detail: "Worker response over \(SyncClient.maxResponseBytes) bytes")
+        #expect(try await client.fetch(.watchLater)?.data == largest)
+        #expect(await syncError { () async throws(SyncError) in try await client.fetch(.watchLater) } == tooLarge)
+        #expect(await syncError { () async throws(SyncError) in
+            try await client.put(.watchLater, data: Data("{}".utf8), precondition: .replace(#""2""#))
+        } == tooLarge)
+        #expect(await syncError { () async throws(SyncError) in try await client.fetch(.watchLater) } == tooLarge)
+        #expect(SyncClient.maxResponseBytes > SyncClient.maxDocumentBytes)
+        #expect(SyncClient.maxResponseBytes <= SyncClient.maxDocumentBytes + 64 * 1024)
+    }
+
+    @Test(arguments: [301, 302, 303, 307, 308])
+    func `redirects are not followed, so the token never goes to another URL`(status: Int) async {
+        let elsewhere = StubURLProtocol.Server([
+            .response(status: 200, headers: ["ETag": #""1""#], body: Data("{}".utf8)),
+            .response(status: 200, headers: ["ETag": #""2""#]),
+            .response(status: 200, body: Data(#"{"items":[]}"#.utf8)),
+        ])
+        let target = elsewhere.baseURL.appending(path: "v1/stores/subscriptions")
+        let server = StubURLProtocol.Server([
+            .redirect(status: status, location: target),
+            .redirect(status: status, location: target),
+            .redirect(status: status, location: target),
+        ])
+        let client = client(server)
+        #expect(await syncError { () async throws(SyncError) in try await client.fetch(.subscriptions) } == .server(status: status))
+        #expect(await syncError { () async throws(SyncError) in
+            try await client.put(.subscriptions, data: Data("{}".utf8), precondition: .create)
+        } == .server(status: status))
+        #expect(await syncError { () async throws(SyncError) in try await client.inbox() } == .server(status: status))
+        #expect(server.requests.count == 3)
+        #expect(elsewhere.requests.isEmpty)
+    }
 }

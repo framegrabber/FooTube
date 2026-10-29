@@ -23,6 +23,12 @@ public struct SyncClient: Sendable {
 
     /// The Worker refuses documents larger than this (`413`).
     public static let maxDocumentBytes = 1024 * 1024
+    /// The largest response read: the largest document plus a margin for anything else the Contract
+    /// sends (the inbox is at most 100 items of about 1 KiB); larger is not a Worker following the
+    /// Contract and is rejected before it is all in memory.
+    public static let maxResponseBytes = maxDocumentBytes + 16 * 1024
+    /// The Worker's inbox cap (`409 inbox_full` beyond it).
+    public static let maxInboxItems = 100
 
     private let baseURL: URL
     private let token: String
@@ -77,13 +83,17 @@ public struct SyncClient: Sendable {
     }
 
     /// The browser inbox (SPEC-browser-inbox), oldest first; nil when this Worker has no inbox:
-    /// `500 not_configured` (no `INBOX_TOKEN` set) or `404` (a Worker from before the inbox).
+    /// `500 not_configured` (no `INBOX_TOKEN` set) or `404` (a Worker from before the inbox). More
+    /// than `maxInboxItems` items is not a Worker following the Contract: rejected.
     public func inbox() async throws(SyncError) -> [InboxItem]? {
         let (data, response) = try await send(request(path: "v1/inbox", method: "GET"), label: "inbox")
         switch response.statusCode {
         case 200:
             guard let list = try? SyncCoding.decoder().decode(InboxList.self, from: data) else {
                 throw .invalidDocument(detail: "inbox unreadable")
+            }
+            guard list.items.count <= Self.maxInboxItems else {
+                throw .invalidDocument(detail: "inbox has more than \(Self.maxInboxItems) items")
             }
             return list.items
         case 404:
@@ -132,21 +142,63 @@ public struct SyncClient: Sendable {
     }
 
     /// Logs method, store (or `inbox`) and status only: never the token, headers, documents or videos.
+    /// Redirects are refused (`RedirectRefusal`), so the 3xx itself is the response and no request
+    /// with the `Authorization` header goes anywhere but the configured Worker. A body over
+    /// `maxResponseBytes` is rejected by its `Content-Length` before reading, or once more than that
+    /// arrived.
     private func send(_ request: URLRequest, label: String) async throws(SyncError) -> (Data, HTTPURLResponse) {
         let method = request.httpMethod ?? "GET"
-        let result: (Data, URLResponse)
+        let bytes: URLSession.AsyncBytes
+        let received: URLResponse
         do {
-            result = try await session.data(for: request)
+            (bytes, received) = try await session.bytes(for: request, delegate: RedirectRefusal.shared)
         } catch {
-            let detail = (error as? URLError).map { "\($0.localizedDescription) (\($0.code.rawValue))" } ?? String(describing: type(of: error))
-            logger.error("\(method, privacy: .public) \(label, privacy: .public): offline (\(detail, privacy: .public))")
-            throw .offline(detail: detail)
+            throw offline(error, method: method, label: label)
         }
-        guard let response = result.1 as? HTTPURLResponse else {
+        guard let response = received as? HTTPURLResponse else {
+            bytes.task.cancel()
             logger.error("\(method, privacy: .public) \(label, privacy: .public): not an HTTP response")
             throw .server(status: 0)
         }
         logger.info("\(method, privacy: .public) \(label, privacy: .public): HTTP \(response.statusCode)")
-        return (result.0, response)
+        let tooLarge = SyncError.invalidDocument(detail: "Worker response over \(Self.maxResponseBytes) bytes")
+        guard response.expectedContentLength <= Self.maxResponseBytes else {
+            bytes.task.cancel()
+            logger.error("\(method, privacy: .public) \(label, privacy: .public): Content-Length \(response.expectedContentLength) over \(Self.maxResponseBytes)")
+            throw tooLarge
+        }
+        var data = Data()
+        data.reserveCapacity(Int(max(0, response.expectedContentLength)))
+        do {
+            for try await byte in bytes {
+                guard data.count < Self.maxResponseBytes else {
+                    bytes.task.cancel()
+                    logger.error("\(method, privacy: .public) \(label, privacy: .public): body over \(Self.maxResponseBytes) bytes")
+                    throw tooLarge
+                }
+                data.append(byte)
+            }
+        } catch let error as SyncError {
+            throw error
+        } catch {
+            throw offline(error, method: method, label: label)
+        }
+        return (data, response)
+    }
+
+    private func offline(_ error: any Error, method: String, label: String) -> SyncError {
+        let detail = (error as? URLError).map { "\($0.localizedDescription) (\($0.code.rawValue))" } ?? String(describing: type(of: error))
+        logger.error("\(method, privacy: .public) \(label, privacy: .public): offline (\(detail, privacy: .public))")
+        return .offline(detail: detail)
+    }
+}
+
+/// Refuses every redirect. The Worker never redirects (Contract); following one would send the
+/// request, `Authorization` header included, to whatever URL the redirect names.
+private final class RedirectRefusal: NSObject, URLSessionTaskDelegate, Sendable {
+    static let shared = RedirectRefusal()
+
+    func urlSession(_: URLSession, task _: URLSessionTask, willPerformHTTPRedirection _: HTTPURLResponse, newRequest _: URLRequest) async -> URLRequest? {
+        nil
     }
 }

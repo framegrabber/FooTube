@@ -6,6 +6,9 @@ import Synchronization
 final class StubURLProtocol: URLProtocol {
     enum Reply: Sendable {
         case response(status: Int, headers: [String: String] = [:], body: Data = Data())
+        /// A redirect to `location` (another `Server`'s URL to see whether it is followed); the new
+        /// request keeps every header, as URLSession's own redirects do.
+        case redirect(status: Int, location: URL)
         case failure(URLError.Code)
     }
 
@@ -79,6 +82,14 @@ final class StubURLProtocol: URLProtocol {
             let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: body)
+            client?.urlProtocolDidFinishLoading(self)
+        case let .redirect(status, location):
+            let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Location": location.absoluteString])!
+            var next = request
+            next.url = location
+            client?.urlProtocol(self, wasRedirectedTo: next, redirectResponse: response)
+            // What the client gets when it refuses the redirect: the 3xx itself.
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocolDidFinishLoading(self)
         case let .failure(code):
             client?.urlProtocol(self, didFailWithError: URLError(code))

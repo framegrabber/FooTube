@@ -1,6 +1,7 @@
 import Foundation
 
-/// Why a sync request or round failed. `SyncClient` throws the first three; the engine adds the rest.
+/// Why a sync request or round failed. `SyncClient` throws the first three and `invalidDocument` (an
+/// unreadable or oversized response); the engine adds the rest.
 public enum SyncError: Error, Hashable, Sendable {
     /// No answer from the Worker: no network, DNS, TLS, connection refused or the 10 s timeout.
     case offline(detail: String)
@@ -12,8 +13,9 @@ public enum SyncError: Error, Hashable, Sendable {
     case unsupportedFormat(Int)
     /// Every attempt of a round ended in `412`.
     case conflictPersisted
-    /// The Worker's document can't be read (no `format`, wrong fields), or the local one can't be
-    /// written; the round stops without overwriting anything on the Worker.
+    /// The Worker's document or response can't be read (no `format`, wrong fields, over the size or
+    /// item limits), or the local one can't be written; the round stops without overwriting anything
+    /// on the Worker.
     case invalidDocument(detail: String)
     /// The merged document is over `SyncClient.maxDocumentBytes`; the round stops before the `PUT`
     /// (the Worker would refuse it with `413`) and local data stays as it was.
