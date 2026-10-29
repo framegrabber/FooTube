@@ -19,7 +19,7 @@ While browsing YouTube on a laptop or phone, I click a bookmark and the video la
 | Route | Auth | Request | Responses |
 |---|---|---|---|
 | `GET /add` | none | from the bookmarklet; video ID, title and token only in the URL fragment (`#v=<id>&t=<title>&k=<token>`) | `200` HTML page (below); no data is read or written by this request |
-| `POST /v1/inbox` | `Bearer INBOX_TOKEN` or `SYNC_TOKEN` | `{"videoID": "<11 chars [A-Za-z0-9_-]>", "title": "<≤ 200 chars>"?}`, `application/json`, ≤ 1 KiB | `201` added, `200` already in the inbox (same `videoID`, title updated), `400 invalid_video_id`, `409 inbox_full` (100 items), `401`, `411`/`413`/`415` as for stores |
+| `POST /v1/inbox` | `Bearer INBOX_TOKEN` or `SYNC_TOKEN` | `{"videoID": "<11 chars [A-Za-z0-9_-]>", "title": "<≤ 200 chars>"?}`, `application/json`, ≤ 1 KiB | `201` added, `200` already in the inbox (same `videoID`, title updated), `400 invalid_video_id`, `409 inbox_full` (100 items), `429 rate_limited` with `Retry-After: 60` (more than 20 per 60 s per credential type, checked after auth and before the body; approximate, per Cloudflare location), `401`, `411`/`413`/`415` as for stores |
 | `GET /v1/inbox` | `Bearer SYNC_TOKEN` only | — | `200 {"items":[{"seq": n, "videoID", "title"?, "addedAt"}]}` oldest first |
 | `DELETE /v1/inbox?through=<seq>` | `Bearer SYNC_TOKEN` only | — | `204`; removes items with `seq ≤ through` (idempotent) |
 
@@ -66,7 +66,7 @@ As `FooTubeSyncBackend/SPEC.md` and `SPEC-sync-client.md`. New files: `FooTubeSy
 - A browser extension: a bookmarklet needs no store, no review, no updates.
 
 ## Decisions to review
-- **Token in the fragment of a page on the Worker's origin**, not an in-page `fetch` from youtube.com. Checked: YouTube's CSP has no `connect-src`/`default-src`, so an in-page fetch would not be blocked; it would still need CORS on the Worker and would expose the token to YouTube's scripts, so the new-tab design stays.
+- **Token in the fragment of a page on the Worker's origin**, not an in-page `fetch` from youtube.com (which would need CORS on the Worker). This does not keep the token from the page's scripts: the bookmarklet's code, token included, runs inside the page it is clicked on, so YouTube's scripts (or any other site's, if clicked elsewhere) can read it. Accepted risk (owner, 2026-10-29): the inbox token can only add videos to Watch Later and fill the inbox, and `POST /v1/inbox` is rate-limited to 20 per minute; the README says to click it only on youtube.com and to rotate `INBOX_TOKEN` if it was clicked elsewhere or leaked.
 - **Video ID and title in the fragment too** (changed during implementation), so no inbox data appears in any URL the Worker or Cloudflare logs.
 - **Title passed from the page** so Watch Later shows something useful before the catalog fills in details.
 - **Inbox cap 100**, idempotent per video ID.
