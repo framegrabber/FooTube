@@ -116,6 +116,7 @@ Naming: types `UpperCamelCase`, no `Manager`/`Helper` suffixes; one primary type
 - SponsorBlock: by default auto-skip `sponsor`; all other categories show a skip button. Each category can be changed in Settings (skip automatically, show button, off).
 - Subscriptions start empty; added only via the channel page. No Takeout import.
 - Sync between the household's Apple TVs goes through a self-hosted Cloudflare Worker, not iCloud (needs the paid program): [SYNC.md](SYNC.md), [SPEC-sync-client.md](SPEC-sync-client.md).
+- Artwork (thumbnails, avatars, chapter images) loads only over `https` from hosts under `ytimg.com`, `ggpht.com` and `googleusercontent.com` (`ArtworkURL`, the hosts InnerTube returns); any other URL, e.g. one from a synced document, shows the gray placeholder and is never requested (2026-10-29, security review).
 - Device runs tvOS 26 (owner reports "25 or 26"; Apple went from 18 to 26, so ≥ 18 either way). Deployment target tvOS 18 stands.
 
 ## Out of Scope (possible later)

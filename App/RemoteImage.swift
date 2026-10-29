@@ -93,8 +93,10 @@ final class RemoteImageLoader {
     }
 
     /// The image, or nil if it could not be loaded. Not cancelled with the caller: the load finishes
-    /// and fills the cache for the next appearance.
+    /// and fills the cache for the next appearance. URLs outside `ArtworkURL` (YouTube's image hosts
+    /// over https) are never requested: synced documents could carry any URL.
     func image(for request: Request) async -> UIImage? {
+        guard ArtworkURL.isAllowed(request.url) else { return nil }
         if let image = cached(request) {
             return image
         }
