@@ -63,13 +63,6 @@ final class PlayerPresenter: NSObject, @MainActor AVPlayerViewControllerDelegate
         controller.canStartPictureInPictureAutomaticallyFromInline = true
         controller.modalPresentationStyle = .fullScreen
         controller.view.accessibilityIdentifier = "player" // UI tests
-        if let title = next.title {
-            let item = AVMutableMetadataItem()
-            item.identifier = .commonIdentifierTitle
-            item.value = title as NSString
-            item.extendedLanguageTag = "und"
-            next.player.currentItem?.externalMetadata = [item]
-        }
         PlayerOverlay.install(in: controller, session: next)
         readyObservation = controller.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak next] controller, _ in
             MainActor.assumeIsolated {

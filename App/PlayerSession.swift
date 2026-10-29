@@ -66,11 +66,6 @@ final class PlayerSession: Identifiable {
         private static let chapterArtwork = (width: 320, height: 180)
     #endif
 
-    /// Title for the player and Now Playing; nil when played by ID only.
-    var title: String? {
-        video?.title
-    }
-
     nonisolated var id: VideoID {
         source.id
     }
@@ -92,7 +87,25 @@ final class PlayerSession: Identifiable {
         self.skipSettings = skipSettings
         self.requestedAt = requestedAt
         resolvedAt = .now
-        player = AVPlayer(playerItem: AVPlayerItem(asset: source.asset))
+        let item = AVPlayerItem(asset: source.asset)
+        item.externalMetadata = Self.infoMetadata(for: video)
+        player = AVPlayer(playerItem: item)
+    }
+
+    /// Title and channel for the system player's info panel (shown on pause) and Now Playing.
+    private static func infoMetadata(for video: VideoSummary?) -> [AVMetadataItem] {
+        let fields: [(AVMetadataIdentifier, String?)] = [
+            (.commonIdentifierTitle, video?.title),
+            (.iTunesMetadataTrackSubTitle, video?.channel?.name),
+        ]
+        return fields.compactMap { identifier, text in
+            guard let text, !text.isEmpty else { return nil }
+            let item = AVMutableMetadataItem()
+            item.identifier = identifier
+            item.value = text as NSString
+            item.extendedLanguageTag = "und"
+            return item
+        }
     }
 
     /// Called by the player view once the first video frame is ready for display.
