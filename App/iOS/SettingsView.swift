@@ -5,19 +5,11 @@ import SwiftUI
 /// (status, Sync Now, connecting a server by pasting its URL and token, turning sync off), clearing
 /// History and Watch Later, About.
 struct SettingsView: View {
-    private enum Confirmation: Identifiable {
-        case history, watchLater, turnOffSync
-        var id: Self {
-            self
-        }
-    }
-
     @Environment(SettingsModel.self) private var settings
     @Environment(WatchHistoryModel.self) private var watchHistory
     @Environment(WatchLaterModel.self) private var watchLater
     @Environment(SyncModel.self) private var sync
     @AppStorage(DevicePreference.hideWatchedInSubscriptions) private var hideWatched = true
-    @State private var confirmation: Confirmation?
     @State private var turnOffError: String?
 
     var body: some View {
@@ -31,39 +23,13 @@ struct SettingsView: View {
                 } footer: {
                     Text("Videos you watched to the end don't appear in Subscriptions. This setting is for this device only.")
                 }
-                SyncSection(onTurnOff: { confirmation = .turnOffSync }, turnOffError: turnOffError)
+                SyncSection(onTurnOff: turnOffSync, turnOffError: turnOffError)
                 data
                 about
             }
             .navigationTitle("Settings")
             .navigationDestination(for: SponsorCategory.self) { category in
                 SkipBehaviorPage(category: category)
-            }
-            .confirmationDialog(
-                title(of: confirmation),
-                isPresented: Binding(get: { confirmation != nil }, set: {
-                    if !$0 {
-                        confirmation = nil
-                    }
-                }),
-                titleVisibility: .visible,
-                presenting: confirmation,
-            ) { confirmed in
-                switch confirmed {
-                case .history:
-                    Button("Clear Watch History", role: .destructive) { watchHistory.clear() }
-                case .watchLater:
-                    Button("Clear Watch Later", role: .destructive) { watchLater.clear() }
-                case .turnOffSync:
-                    Button("Turn Off Sync", role: .destructive) { turnOffSync() }
-                }
-            } message: { confirmed in
-                switch confirmed {
-                case .history, .watchLater:
-                    Text("This can't be undone.")
-                case .turnOffSync:
-                    Text("This device stops syncing and forgets the server and its token. Subscriptions, Watch Later and History stay on this device.")
-                }
             }
         }
     }
@@ -86,14 +52,14 @@ struct SettingsView: View {
 
     private var data: some View {
         Section {
-            Button(role: .destructive) {
-                confirmation = .history
+            ConfirmedDestructiveButton(title: "Clear watch history?", confirm: "Clear Watch History", message: "This can't be undone.") {
+                watchHistory.clear()
             } label: {
                 LabeledContent("Clear Watch History") { Text("\(watchHistory.count) videos") }
             }
             .disabled(watchHistory.count == 0)
-            Button(role: .destructive) {
-                confirmation = .watchLater
+            ConfirmedDestructiveButton(title: "Clear Watch Later?", confirm: "Clear Watch Later", message: "This can't be undone.") {
+                watchLater.clear()
             } label: {
                 LabeledContent("Clear Watch Later") { Text("\(watchLater.items.count) videos") }
             }
@@ -136,21 +102,37 @@ struct SettingsView: View {
         }
     }
 
-    private func title(of confirmation: Confirmation?) -> Text {
-        switch confirmation {
-        case .history: Text("Clear watch history?")
-        case .watchLater: Text("Clear Watch Later?")
-        case .turnOffSync: Text("Turn off sync?")
-        case nil: Text(verbatim: "")
-        }
-    }
-
     private func turnOffSync() {
         do throws(SyncConfigurationError) {
             try sync.turnOff()
             turnOffError = nil
         } catch {
             turnOffError = error.userMessage
+        }
+    }
+}
+
+/// A destructive row that asks first. The confirmation is attached to the row itself, so where the
+/// system shows it as a popover (iPad, iPhone on iOS 26) it points at the row that was tapped.
+private struct ConfirmedDestructiveButton<Label: View>: View {
+    let title: LocalizedStringKey
+    let confirm: LocalizedStringKey
+    let message: LocalizedStringKey
+    let action: () -> Void
+    @ViewBuilder let label: Label
+
+    @State private var isPresented = false
+
+    var body: some View {
+        Button(role: .destructive) {
+            isPresented = true
+        } label: {
+            label
+        }
+        .confirmationDialog(title, isPresented: $isPresented, titleVisibility: .visible) {
+            Button(confirm, role: .destructive, action: action)
+        } message: {
+            Text(message)
         }
     }
 }
@@ -230,7 +212,14 @@ private struct SyncSection: View {
                     isChangingServer.toggle()
                     connectError = nil
                 }
-                Button("Turn Off Sync", role: .destructive, action: onTurnOff)
+                ConfirmedDestructiveButton(
+                    title: "Turn off sync?",
+                    confirm: "Turn Off Sync",
+                    message: "This device stops syncing and forgets the server and its token. Subscriptions, Watch Later and History stay on this device.",
+                    action: onTurnOff,
+                ) {
+                    Text("Turn Off Sync")
+                }
             }
         }
     }
